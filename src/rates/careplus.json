@@ -1,0 +1,67 @@
+{
+  "stream": "careplus",
+  "effectiveDate": "2025-07-01",
+  "source": "examples/careplus funding.xlsx",
+  "currency": "NZD",
+  "unit": "per-patient-per-year",
+  "dimensions": ["ageBand", "gender", "depBand", "ethnicity"],
+  "notes": [
+    "Age band '5-14' is labelled '5-15' in the source xlsx; treated here as 5-14 per standard NZ capitation bands.",
+    "depBand dep9-10 corresponds to NZDep Quintile 5; dep1-8 is Quintiles 1-4."
+  ],
+  "rates": [
+    { "ageBand": "0-4",   "gender": "F", "depBand": "dep1-8",  "ethnicity": "other",         "rate": 4.337694 },
+    { "ageBand": "0-4",   "gender": "F", "depBand": "dep1-8",  "ethnicity": "maori-pacific", "rate": 6.6511308 },
+    { "ageBand": "0-4",   "gender": "F", "depBand": "dep9-10", "ethnicity": "other",         "rate": 6.3619512 },
+    { "ageBand": "0-4",   "gender": "F", "depBand": "dep9-10", "ethnicity": "maori-pacific", "rate": 7.5186696 },
+    { "ageBand": "0-4",   "gender": "M", "depBand": "dep1-8",  "ethnicity": "other",         "rate": 4.9160532 },
+    { "ageBand": "0-4",   "gender": "M", "depBand": "dep1-8",  "ethnicity": "maori-pacific", "rate": 5.783592 },
+    { "ageBand": "0-4",   "gender": "M", "depBand": "dep9-10", "ethnicity": "other",         "rate": 5.4944124 },
+    { "ageBand": "0-4",   "gender": "M", "depBand": "dep9-10", "ethnicity": "maori-pacific", "rate": 8.9645676 },
+
+    { "ageBand": "5-14",  "gender": "F", "depBand": "dep1-8",  "ethnicity": "other",         "rate": 3.1809756 },
+    { "ageBand": "5-14",  "gender": "F", "depBand": "dep1-8",  "ethnicity": "maori-pacific", "rate": 3.7593348 },
+    { "ageBand": "5-14",  "gender": "F", "depBand": "dep9-10", "ethnicity": "other",         "rate": 3.4701552 },
+    { "ageBand": "5-14",  "gender": "F", "depBand": "dep9-10", "ethnicity": "maori-pacific", "rate": 4.0485144 },
+    { "ageBand": "5-14",  "gender": "M", "depBand": "dep1-8",  "ethnicity": "other",         "rate": 2.0242572 },
+    { "ageBand": "5-14",  "gender": "M", "depBand": "dep1-8",  "ethnicity": "maori-pacific", "rate": 2.6026164 },
+    { "ageBand": "5-14",  "gender": "M", "depBand": "dep9-10", "ethnicity": "other",         "rate": 2.3134368 },
+    { "ageBand": "5-14",  "gender": "M", "depBand": "dep9-10", "ethnicity": "maori-pacific", "rate": 4.6268736 },
+
+    { "ageBand": "15-24", "gender": "F", "depBand": "dep1-8",  "ethnicity": "other",         "rate": 4.0485144 },
+    { "ageBand": "15-24", "gender": "F", "depBand": "dep1-8",  "ethnicity": "maori-pacific", "rate": 9.5429268 },
+    { "ageBand": "15-24", "gender": "F", "depBand": "dep9-10", "ethnicity": "other",         "rate": 7.22949 },
+    { "ageBand": "15-24", "gender": "F", "depBand": "dep9-10", "ethnicity": "maori-pacific", "rate": 9.8321064 },
+    { "ageBand": "15-24", "gender": "M", "depBand": "dep1-8",  "ethnicity": "other",         "rate": 1.445898 },
+    { "ageBand": "15-24", "gender": "M", "depBand": "dep1-8",  "ethnicity": "maori-pacific", "rate": 4.6268736 },
+    { "ageBand": "15-24", "gender": "M", "depBand": "dep9-10", "ethnicity": "other",         "rate": 4.337694 },
+    { "ageBand": "15-24", "gender": "M", "depBand": "dep9-10", "ethnicity": "maori-pacific", "rate": 4.9160532 },
+
+    { "ageBand": "25-44", "gender": "F", "depBand": "dep1-8",  "ethnicity": "other",         "rate": 6.9403104 },
+    { "ageBand": "25-44", "gender": "F", "depBand": "dep1-8",  "ethnicity": "maori-pacific", "rate": 10.9888248 },
+    { "ageBand": "25-44", "gender": "F", "depBand": "dep9-10", "ethnicity": "other",         "rate": 7.5186696 },
+    { "ageBand": "25-44", "gender": "F", "depBand": "dep9-10", "ethnicity": "maori-pacific", "rate": 12.4347228 },
+    { "ageBand": "25-44", "gender": "M", "depBand": "dep1-8",  "ethnicity": "other",         "rate": 3.7593348 },
+    { "ageBand": "25-44", "gender": "M", "depBand": "dep1-8",  "ethnicity": "maori-pacific", "rate": 8.9645676 },
+    { "ageBand": "25-44", "gender": "M", "depBand": "dep9-10", "ethnicity": "other",         "rate": 4.6268736 },
+    { "ageBand": "25-44", "gender": "M", "depBand": "dep9-10", "ethnicity": "maori-pacific", "rate": 10.4104656 },
+
+    { "ageBand": "45-64", "gender": "F", "depBand": "dep1-8",  "ethnicity": "other",         "rate": 13.8806208 },
+    { "ageBand": "45-64", "gender": "F", "depBand": "dep1-8",  "ethnicity": "maori-pacific", "rate": 39.9067848 },
+    { "ageBand": "45-64", "gender": "F", "depBand": "dep9-10", "ethnicity": "other",         "rate": 24.580266 },
+    { "ageBand": "45-64", "gender": "F", "depBand": "dep9-10", "ethnicity": "maori-pacific", "rate": 40.1959644 },
+    { "ageBand": "45-64", "gender": "M", "depBand": "dep1-8",  "ethnicity": "other",         "rate": 17.350776 },
+    { "ageBand": "45-64", "gender": "M", "depBand": "dep1-8",  "ethnicity": "maori-pacific", "rate": 45.9795564 },
+    { "ageBand": "45-64", "gender": "M", "depBand": "dep9-10", "ethnicity": "other",         "rate": 26.8937028 },
+    { "ageBand": "45-64", "gender": "M", "depBand": "dep9-10", "ethnicity": "maori-pacific", "rate": 48.2929932 },
+
+    { "ageBand": "65+",   "gender": "F", "depBand": "dep1-8",  "ethnicity": "other",         "rate": 53.2090464 },
+    { "ageBand": "65+",   "gender": "F", "depBand": "dep1-8",  "ethnicity": "maori-pacific", "rate": 84.4404432 },
+    { "ageBand": "65+",   "gender": "F", "depBand": "dep9-10", "ethnicity": "other",         "rate": 64.7762304 },
+    { "ageBand": "65+",   "gender": "F", "depBand": "dep9-10", "ethnicity": "maori-pacific", "rate": 97.7427048 },
+    { "ageBand": "65+",   "gender": "M", "depBand": "dep1-8",  "ethnicity": "other",         "rate": 61.3060752 },
+    { "ageBand": "65+",   "gender": "M", "depBand": "dep1-8",  "ethnicity": "maori-pacific", "rate": 107.5748112 },
+    { "ageBand": "65+",   "gender": "M", "depBand": "dep9-10", "ethnicity": "other",         "rate": 71.4273612 },
+    { "ageBand": "65+",   "gender": "M", "depBand": "dep9-10", "ethnicity": "maori-pacific", "rate": 118.563636 }
+  ]
+}

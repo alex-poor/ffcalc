@@ -1,0 +1,19 @@
+{
+  "stream": "hop",
+  "effectiveDate": "2025-07-01",
+  "source": "https://www.tewhatuora.govt.nz/for-health-providers/primary-care-sector/capitation-rates",
+  "currency": "NZD",
+  "unit": "per-patient-per-year",
+  "gst": "excluded",
+  "dimensions": ["ethnicity", "depBand"],
+  "notes": [
+    "Non-HUHC patients only — HUHC=Y cells contribute $0.",
+    "No age or gender differentiation."
+  ],
+  "rates": [
+    { "ethnicity": "maori-pacific", "depBand": "dep1-8",  "rate": 3.0828 },
+    { "ethnicity": "maori-pacific", "depBand": "dep9-10", "rate": 3.5976 },
+    { "ethnicity": "other",         "depBand": "dep1-8",  "rate": 2.5692 },
+    { "ethnicity": "other",         "depBand": "dep9-10", "rate": 3.0828 }
+  ]
+}

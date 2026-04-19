@@ -1,0 +1,30 @@
+{
+  "stream": "first-level-csc-topup",
+  "effectiveDate": "2025-07-01",
+  "source": "https://www.tewhatuora.govt.nz/for-health-providers/primary-care-sector/capitation-rates",
+  "currency": "NZD",
+  "unit": "per-patient-per-year",
+  "dimensions": ["ageBand", "gender"],
+  "appliesWhen": "practiceType = 'Non-Access' AND csc = 'Y'",
+  "notes": [
+    "Source table: 'Community Services Card Top-Up Rates (Non-VLCA CSC Holders)'.",
+    "Added to base First-Level rate for Non-Access (non-VLCA) practice CSC holders.",
+    "At Access/VLCA practices, CSC holders do not receive this top-up — the base Access rate already subsidises them.",
+    "0-4 rates are $0 because under-6s already have free visits.",
+    "HUHC interaction is ambiguous on the source page; we apply the top-up regardless of HUHC status (pending PHO confirmation)."
+  ],
+  "rates": [
+    { "ageBand": "0-4",   "gender": "F", "rate": 0.0000 },
+    { "ageBand": "0-4",   "gender": "M", "rate": 0.0000 },
+    { "ageBand": "5-14",  "gender": "F", "rate": 6.4788 },
+    { "ageBand": "5-14",  "gender": "M", "rate": 6.5028 },
+    { "ageBand": "15-24", "gender": "F", "rate": 95.1024 },
+    { "ageBand": "15-24", "gender": "M", "rate": 57.8040 },
+    { "ageBand": "25-44", "gender": "F", "rate": 132.3036 },
+    { "ageBand": "25-44", "gender": "M", "rate": 145.7160 },
+    { "ageBand": "45-64", "gender": "F", "rate": 263.4684 },
+    { "ageBand": "45-64", "gender": "M", "rate": 270.5916 },
+    { "ageBand": "65+",   "gender": "F", "rate": 347.8368 },
+    { "ageBand": "65+",   "gender": "M", "rate": 371.7516 }
+  ]
+}
