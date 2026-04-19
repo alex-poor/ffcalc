@@ -17,6 +17,10 @@ permissions:
   contents: write
   actions: write
 
+# Opt Node-based actions into Node 24 now; required from June 2026.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     strategy:
