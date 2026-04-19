@@ -59,6 +59,9 @@ echo
 echo '/* FFCalc engine (ports /src/engine) */'
 cat engine.js
 echo
+echo '/* thePHO logo assets */'
+cat logo.js
+echo
 echo '/* FFCalc UI — JSX pre-compiled with esbuild */'
 cat "$COMPILED"
 

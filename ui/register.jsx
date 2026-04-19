@@ -200,27 +200,19 @@ function EmptyState({ onAddPractice, onImport, onSeed, onDismissOnboarding }) {
           </div>
         </div>
 
-        {/* Placeholder hero image — a warm, documentary vignette */}
+        {/* thePHO brand panel */}
         <div style={{ position: 'relative' }}>
           <div style={{
             aspectRatio: '3/4', borderRadius: 'var(--r-lg)', overflow: 'hidden',
-            background: 'linear-gradient(135deg, #fad1d4 0%, #ed696e 70%, #c23d41 100%)',
+            background: 'linear-gradient(135deg, #ed696e 0%, #c23d41 100%)',
             boxShadow: 'var(--shadow-lg)',
             display: 'grid', placeItems: 'center',
-            color: 'white',
+            padding: 32,
           }}>
-            <svg viewBox="0 0 200 260" style={{ width: '100%', height: '100%', opacity: 0.9 }}>
-              {/* abstract health-whānau figures */}
-              <circle cx="70" cy="90" r="24" fill="#fff" fillOpacity="0.18"/>
-              <path d="M 30 180 Q 70 140 110 180 L 110 260 L 30 260 Z" fill="#fff" fillOpacity="0.18"/>
-              <circle cx="135" cy="110" r="18" fill="#fff" fillOpacity="0.25"/>
-              <path d="M 100 180 Q 135 150 170 180 L 170 260 L 100 260 Z" fill="#fff" fillOpacity="0.25"/>
-              <circle cx="160" cy="70" r="14" fill="#fff" fillOpacity="0.3"/>
-              <path d="M 140 120 Q 160 100 180 120 L 180 180 L 140 180 Z" fill="#fff" fillOpacity="0.3"/>
-            </svg>
+            <img src={window.LOGO_REVERSED_URL} alt="thePHO" style={{ width: '90%', height: 'auto', display: 'block' }}/>
           </div>
           <div style={{ marginTop: 12, fontSize: 12, color: 'var(--text-dim)', textAlign: 'center', fontStyle: 'italic' }}>
-            Imagery placeholder · thePHO hero photography
+            The New Zealand Primary Health Organisation
           </div>
         </div>
       </div>

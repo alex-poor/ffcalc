@@ -118,11 +118,10 @@ function App() {
   return (
     <div className="app">
       <aside className="sidebar">
-        <div className="brand">
-          <div className="brand-mark">FF</div>
-          <div>
-            <div className="brand-name">FFCalc</div>
-            <div className="brand-sub">thePHO · Bulk funding</div>
+        <div className="brand" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 6, paddingBottom: 16 }}>
+          <img src={window.LOGO_URL} alt="thePHO" style={{ width: 168, height: 'auto', display: 'block' }}/>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase', fontWeight: 600, paddingLeft: 2 }}>
+            FFCalc · Bulk funding
           </div>
         </div>
 
