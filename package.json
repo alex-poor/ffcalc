@@ -1,6 +1,6 @@
 {
   "name": "ffcalc",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "thePHO bulk-funding calculator — Layer 1 (Te Whatu Ora → PHO) revenue estimator by stream",
   "type": "module",
   "private": true,
