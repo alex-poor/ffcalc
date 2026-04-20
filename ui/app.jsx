@@ -21,7 +21,8 @@ function App() {
   const { toasts, push: pushToast } = window.useToasts();
 
   // Update checker
-  const [updateInfo, setUpdateInfo] = React.useState(null); // {available, version, body, _update} or null
+  const [updateInfo, setUpdateInfo] = React.useState(null);    // persistent "there's an update"
+  const [updateModalOpen, setUpdateModalOpen] = React.useState(false);
   const [updateStatus, setUpdateStatus] = React.useState('idle'); // idle, checking, downloading, error
   const [updateProgress, setUpdateProgress] = React.useState(0);
   const [updateMsg, setUpdateMsg] = React.useState('');
@@ -33,6 +34,7 @@ function App() {
     setUpdateStatus('idle');
     if (res.available) {
       setUpdateInfo(res);
+      setUpdateModalOpen(true);
     } else if (!silent) {
       if (res.reason === 'browser') pushToast({ msg: 'Updates only check in the desktop app' });
       else if (res.error) pushToast({ msg: `Update check failed: ${res.error}` });
@@ -175,6 +177,22 @@ function App() {
             <ICONS.Drop size={12}/> Local-only · IndexedDB
           </div>
           <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>v0.3.1 · Rates eff. 1 Jul 2025</div>
+          {updateInfo ? (
+            <button
+              onClick={() => setUpdateModalOpen(true)}
+              className="update-pill"
+              title="Update available"
+            >
+              <span className="dot"/>
+              Update to v{updateInfo.version}
+            </button>
+          ) : updateStatus === 'checking' ? (
+            <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>Checking for updates…</div>
+          ) : window.ffUpdate?.inTauri ? (
+            <button onClick={() => runUpdateCheck(false)} className="btn ghost sm" style={{ marginTop: 6, width: '100%', fontSize: 11.5, padding: '4px 8px' }}>
+              Check for updates
+            </button>
+          ) : null}
         </div>
       </aside>
 
@@ -191,6 +209,9 @@ function App() {
             <span className="dot"/>
             {savingState === 'saving' ? 'Saving…' : 'All changes saved'}
           </span>
+          <button className="btn ghost sm icon" onClick={() => setTweaksOpen(v => !v)} title="Settings">
+            <ICONS.Settings size={15}/>
+          </button>
         </div>
 
         {screen}
@@ -211,8 +232,8 @@ function App() {
         onCheckUpdate={() => runUpdateCheck(false)} updateStatus={updateStatus}/>}
 
       {/* Update-available modal */}
-      {updateInfo && (
-        <div className="modal-back" onClick={() => updateStatus !== 'downloading' && setUpdateInfo(null)}>
+      {updateInfo && updateModalOpen && (
+        <div className="modal-back" onClick={() => updateStatus !== 'downloading' && setUpdateModalOpen(false)}>
           <div className="modal fade-in" style={{ maxWidth: 520 }} onClick={e => e.stopPropagation()}>
             <div className="modal-head">
               <h3>Update available — v{updateInfo.version}</h3>
@@ -241,7 +262,7 @@ function App() {
               )}
             </div>
             <div className="modal-foot">
-              <button className="btn ghost" disabled={updateStatus === 'downloading'} onClick={() => setUpdateInfo(null)}>Later</button>
+              <button className="btn ghost" disabled={updateStatus === 'downloading'} onClick={() => setUpdateModalOpen(false)}>Later</button>
               <button className="btn primary" disabled={updateStatus === 'downloading'} onClick={async () => {
                 setUpdateStatus('downloading'); setUpdateProgress(0); setUpdateMsg('Starting\u2026');
                 try {
