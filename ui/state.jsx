@@ -16,10 +16,14 @@ function saveState(s) {
 
 function makeInitialState() {
   const saved = loadState();
-  if (saved) return saved;
+  if (saved) {
+    if (!Array.isArray(saved.templates)) saved.templates = window.SEED_TEMPLATES.slice();
+    return saved;
+  }
   return {
     practices: window.SEED_PRACTICES.slice(),
     scenarios: window.SEED_SCENARIOS.slice(),
+    templates: window.SEED_TEMPLATES.slice(),
     activePracticeId: null,
     compareIds: ['s-manukau-base', 's-manukau-aggressive', 's-hataitai-base'],
     firstRun: true, // show onboarding once

@@ -364,13 +364,21 @@
     },
   ];
 
+  // Practice-agnostic pass-through presets. `retention` = % the PHO retains per stream.
+  const SEED_TEMPLATES = [
+    { id: 't-generous',    name: 'Generous — 95% pass-through',   retention: { firstLevel: 5,  hop: 5,  sia: 5,  careplus: 5  } },
+    { id: 't-flat-90',     name: 'Flat — 90% pass-through',       retention: { firstLevel: 10, hop: 10, sia: 10, careplus: 10 } },
+    { id: 't-base-85',     name: 'Base — 85% pass-through',       retention: { firstLevel: 15, hop: 15, sia: 15, careplus: 15 } },
+    { id: 't-aggressive',  name: 'Aggressive retain — 75%',       retention: { firstLevel: 25, hop: 25, sia: 25, careplus: 25 } },
+  ];
+
   const SEED_SCENARIOS = [
     { id: 's-manukau-base',       practiceId: 'p-manukau-heights', name: 'Base offer — 85% pass-through',
-      retention: { firstLevel: 15, hop: 20, sia: 10, careplus: 12 }, created: Date.now() - 1000 * 60 * 60 * 2 },
+      retention: { firstLevel: 15, hop: 15, sia: 15, careplus: 15 }, created: Date.now() - 1000 * 60 * 60 * 2 },
     { id: 's-manukau-aggressive', practiceId: 'p-manukau-heights', name: 'Aggressive retain — 75% pass-through',
-      retention: { firstLevel: 25, hop: 25, sia: 20, careplus: 20 }, created: Date.now() - 1000 * 60 * 60 },
+      retention: { firstLevel: 25, hop: 25, sia: 25, careplus: 25 }, created: Date.now() - 1000 * 60 * 60 },
     { id: 's-hataitai-base',      practiceId: 'p-hataitai',        name: 'Hataitai base — 88% pass-through',
-      retention: { firstLevel: 12, hop: 15, sia: 10, careplus: 10 }, created: Date.now() - 1000 * 60 * 60 * 24 },
+      retention: { firstLevel: 12, hop: 12, sia: 12, careplus: 12 }, created: Date.now() - 1000 * 60 * 60 * 24 },
   ];
 
   // --- Format helpers ---
@@ -404,7 +412,7 @@
     FIRST_LEVEL_RATES, CSC_TOPUP_RATES, HOP_RATES, SIA_RATES, CAREPLUS_RATES,
     RATES_META,
     ffCompute: compute,
-    SEED_PRACTICES, SEED_SCENARIOS,
+    SEED_PRACTICES, SEED_SCENARIOS, SEED_TEMPLATES,
     fmtCurrency, fmtCurrencySigned, fmtNumber, fmtPct, fmtDate,
   });
 })();

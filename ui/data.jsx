@@ -55,7 +55,7 @@ function DataScreen({ state, setState, onBack, pushToast, pushHistory }) {
   };
 
   return (
-    <div className="content" style={{ maxWidth: 1100 }}>
+    <div className="content narrow">
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 20 }}>
         <Button variant="ghost" onClick={onBack} icon={<ICONS.ArrowBack/>}>Register</Button>
         <div style={{ flex: 1 }}>

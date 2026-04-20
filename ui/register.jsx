@@ -174,7 +174,7 @@ function MenuItem({ children, icon, onClick, danger }) {
 
 function EmptyState({ onAddPractice, onImport, onSeed, onDismissOnboarding }) {
   return (
-    <div className="content" style={{ maxWidth: 1100, margin: '0 auto' }}>
+    <div className="content narrow">
       <div style={{ padding: '40px 0 8px', display: 'grid', gridTemplateColumns: '1fr 340px', gap: 48, alignItems: 'center' }}>
         <div>
           <div style={{ fontSize: 14, color: 'var(--accent)', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 12 }}>

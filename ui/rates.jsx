@@ -53,7 +53,7 @@ function Rates({ onBack, pushToast }) {
   const cfg = STREAM_TABLES[tab];
 
   return (
-    <div className="content" style={{ maxWidth: 1200 }}>
+    <div className="content wide">
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 20 }}>
         <Button variant="ghost" onClick={onBack} icon={<ICONS.ArrowBack/>}>Register</Button>
         <div style={{ flex: 1 }}>

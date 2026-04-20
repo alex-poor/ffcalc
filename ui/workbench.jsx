@@ -75,7 +75,79 @@ function Workbench({ practiceId, state, setState, onBack, onCompare, pushToast, 
     setScenarioName('');
   };
 
+  const renameScenario = (id, nextName) => {
+    const trimmed = (nextName || '').trim();
+    if (!trimmed) return;
+    const existing = state.scenarios.find(s => s.id === id);
+    if (!existing || existing.name === trimmed) return;
+    pushHistory();
+    setState(s => ({
+      ...s,
+      scenarios: s.scenarios.map(sc => sc.id === id ? { ...sc, name: trimmed } : sc),
+    }));
+    pushToast({ msg: `Renamed scenario to "${trimmed}"` });
+  };
+
+  const deleteScenario = (id) => {
+    const sc = state.scenarios.find(s => s.id === id);
+    if (!sc) return;
+    pushHistory();
+    setState(s => ({
+      ...s,
+      scenarios: s.scenarios.filter(x => x.id !== id),
+      compareIds: s.compareIds.filter(x => x !== id),
+    }));
+    if (selectedScenarioId === id) setSelectedScenarioId(null);
+    pushToast({ msg: `Deleted scenario: ${sc.name}`, action: { label: 'Undo' } });
+  };
+
+  const applyTemplate = (id) => {
+    const t = (state.templates || []).find(x => x.id === id);
+    if (!t) return;
+    setRetention({ ...t.retention });
+    setSelectedScenarioId(null);
+    pushToast({ msg: `Applied template: ${t.name}` });
+  };
+
+  const saveCurrentAsTemplate = () => {
+    const name = window.prompt('Name this pass-through template', '');
+    if (!name || !name.trim()) return;
+    pushHistory();
+    const t = {
+      id: 't-' + Math.random().toString(36).slice(2, 9),
+      name: name.trim(),
+      retention: { ...retention },
+    };
+    setState(s => ({ ...s, templates: [...(s.templates || []), t] }));
+    pushToast({ msg: `Saved template: ${t.name}` });
+  };
+
+  const renameTemplate = (id) => {
+    const t = (state.templates || []).find(x => x.id === id);
+    if (!t) return;
+    const next = window.prompt('Rename template', t.name);
+    if (next == null) return;
+    const trimmed = next.trim();
+    if (!trimmed || trimmed === t.name) return;
+    pushHistory();
+    setState(s => ({
+      ...s,
+      templates: (s.templates || []).map(x => x.id === id ? { ...x, name: trimmed } : x),
+    }));
+    pushToast({ msg: `Renamed template to "${trimmed}"` });
+  };
+
+  const deleteTemplate = (id) => {
+    const t = (state.templates || []).find(x => x.id === id);
+    if (!t) return;
+    if (!window.confirm(`Delete template "${t.name}"?`)) return;
+    pushHistory();
+    setState(s => ({ ...s, templates: (s.templates || []).filter(x => x.id !== id) }));
+    pushToast({ msg: `Deleted template: ${t.name}`, action: { label: 'Undo' } });
+  };
+
   const scenarios = state.scenarios.filter(s => s.practiceId === practiceId).sort((a, b) => b.created - a.created);
+  const templates = state.templates || [];
 
   const leftPane = (
     <InputsPane
@@ -87,6 +159,10 @@ function Workbench({ practiceId, state, setState, onBack, onCompare, pushToast, 
         const sc = scenarios.find(s => s.id === id);
         if (sc) setRetention(sc.retention);
       }}
+      renameScenario={renameScenario} deleteScenario={deleteScenario}
+      templates={templates}
+      applyTemplate={applyTemplate} saveCurrentAsTemplate={saveCurrentAsTemplate}
+      renameTemplate={renameTemplate} deleteTemplate={deleteTemplate}
       state={state}
     />
   );
@@ -104,17 +180,17 @@ function Workbench({ practiceId, state, setState, onBack, onCompare, pushToast, 
 
   // Layout variants
   const twoPane = (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: 20, alignItems: 'start' }}>
-      <div style={{ position: 'sticky', top: 80 }}>{leftPane}</div>
+    <div className="wb-two">
+      <div className="wb-sticky" style={{ position: 'sticky', top: 80 }}>{leftPane}</div>
       <div>{rightPane}</div>
     </div>
   );
 
   const threeCol = (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr 1fr', gap: 16, alignItems: 'start' }}>
-      <div style={{ position: 'sticky', top: 80 }}>{leftPane}</div>
+    <div className="wb-three">
+      <div className="wb-sticky" style={{ position: 'sticky', top: 80 }}>{leftPane}</div>
       <div>{rightPane}</div>
-      <div style={{ position: 'sticky', top: 80 }}>
+      <div className="wb-sticky" style={{ position: 'sticky', top: 80 }}>
         <BreakdownSidebar result={result} streamOffer={streamOffer} retention={retention}/>
       </div>
     </div>
@@ -132,7 +208,7 @@ function Workbench({ practiceId, state, setState, onBack, onCompare, pushToast, 
   );
 
   return (
-    <div className="content" style={{ maxWidth: 1600 }}>
+    <div className="content">
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 20 }}>
         <Button variant="ghost" onClick={onBack} icon={<ICONS.ArrowBack/>}>Register</Button>
         <div style={{ flex: 1 }}>
@@ -174,7 +250,19 @@ function Workbench({ practiceId, state, setState, onBack, onCompare, pushToast, 
   );
 }
 
-function InputsPane({ practice, result, retention, setRet, setAllRet, resetRet, masterRet, updatePractice, updatePracticeAge, scenarios, selectedScenarioId, setSelectedScenarioId, state }) {
+function InputsPane({ practice, result, retention, setRet, setAllRet, resetRet, masterRet, updatePractice, updatePracticeAge, scenarios, selectedScenarioId, setSelectedScenarioId, renameScenario, deleteScenario, templates, applyTemplate, saveCurrentAsTemplate, renameTemplate, deleteTemplate, state }) {
+  const selected = scenarios.find(s => s.id === selectedScenarioId);
+  const onRename = () => {
+    if (!selected) return;
+    const next = window.prompt('Rename scenario', selected.name);
+    if (next != null) renameScenario(selected.id, next);
+  };
+  const onDelete = () => {
+    if (!selected) return;
+    if (window.confirm(`Delete scenario "${selected.name}"? This cannot be undone from here (use the Undo toast).`)) {
+      deleteScenario(selected.id);
+    }
+  };
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div className="card">
@@ -184,11 +272,56 @@ function InputsPane({ practice, result, retention, setRet, setAllRet, resetRet, 
         <div className="card-body" style={{ padding: '14px 16px' }}>
           <div className="field">
             <label>Saved scenarios for this practice</label>
-            <select className="input" value={selectedScenarioId || ''} onChange={e => setSelectedScenarioId(e.target.value || null)}>
-              <option value="">— ad-hoc (unsaved) —</option>
-              {scenarios.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'stretch' }}>
+              <select className="input" style={{ flex: 1 }} value={selectedScenarioId || ''} onChange={e => setSelectedScenarioId(e.target.value || null)}>
+                <option value="">— ad-hoc (unsaved) —</option>
+                {scenarios.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+              <button className="btn ghost icon sm" onClick={onRename} disabled={!selected} title="Rename scenario">
+                <ICONS.Edit/>
+              </button>
+              <button className="btn ghost icon sm danger" onClick={onDelete} disabled={!selected} title="Delete scenario">
+                <ICONS.Trash/>
+              </button>
+            </div>
           </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-head" style={{ padding: '12px 16px' }}>
+          <h3>Pass-through templates</h3>
+          <span className="sub" style={{ marginLeft: 'auto', marginRight: 10, color: 'var(--text-dim)' }}>Reusable across practices</span>
+          <Button variant="ghost" size="sm" onClick={saveCurrentAsTemplate} icon={<ICONS.Plus/>}>Save current</Button>
+        </div>
+        <div className="card-body" style={{ padding: '10px 12px 12px' }}>
+          {templates.length === 0 ? (
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', padding: '4px 6px' }}>
+              No templates yet. Set the sliders below and hit "Save current".
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {templates.map(t => {
+                const avg = Math.round((t.retention.firstLevel + t.retention.hop + t.retention.sia + t.retention.careplus) / 4);
+                const flat = t.retention.firstLevel === t.retention.hop && t.retention.hop === t.retention.sia && t.retention.sia === t.retention.careplus;
+                return (
+                  <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px', borderRadius: 'var(--r)', background: 'var(--surface-2)' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--text-strong)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {t.name}
+                      </div>
+                      <div style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>
+                        {flat ? `${100 - avg}% flat` : `FL ${100 - t.retention.firstLevel} · HOP ${100 - t.retention.hop} · SIA ${100 - t.retention.sia} · CP ${100 - t.retention.careplus}`}
+                      </div>
+                    </div>
+                    <button className="btn sm" onClick={() => applyTemplate(t.id)} title="Apply to current practice">Apply</button>
+                    <button className="btn ghost icon sm" onClick={() => renameTemplate(t.id)} title="Rename"><ICONS.Edit/></button>
+                    <button className="btn ghost icon sm danger" onClick={() => deleteTemplate(t.id)} title="Delete"><ICONS.Trash/></button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 

@@ -82,7 +82,7 @@ html, body {
   font-family: var(--font);
   color: var(--text);
   background: var(--bg);
-  font-size: 14.5px;
+  font-size: clamp(15px, 0.95vw + 10px, 19px);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   font-feature-settings: "ss01" on;
@@ -104,8 +104,12 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 /* App shell */
 .app {
   display: grid;
-  grid-template-columns: 232px 1fr;
+  grid-template-columns: clamp(220px, 16vw, 280px) 1fr;
   min-height: 100vh;
+}
+@media (max-width: 860px) {
+  .app { grid-template-columns: 1fr; }
+  .sidebar { position: static !important; height: auto !important; }
 }
 .sidebar {
   background: var(--surface);
@@ -152,7 +156,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 
 .topbar {
   display: flex; align-items: center; gap: 12px;
-  padding: 12px 28px;
+  padding: 12px clamp(20px, 3vw, 48px);
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   position: sticky; top: 0; z-index: 10;
@@ -171,8 +175,32 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 .save-pill.saving .dot { background: var(--amber); animation: pulse 1s infinite; }
 @keyframes pulse { 50% { opacity: 0.4; } }
 
-.content { padding: 28px; max-width: 1600px; width: 100%; }
+.content {
+  padding: clamp(24px, 2.4vw, 48px) clamp(24px, 3.2vw, 64px);
+  max-width: 1760px; width: 100%;
+  margin: 0 auto;
+}
+.content.narrow { max-width: 1280px; }
+.content.wide { max-width: 1560px; }
 .content-fluid { padding: 0; }
+
+/* Responsive workbench layouts */
+.wb-two {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+  gap: clamp(16px, 1.4vw, 28px);
+  align-items: start;
+}
+.wb-three {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: clamp(14px, 1.1vw, 22px);
+  align-items: start;
+}
+@media (max-width: 1100px) {
+  .wb-two, .wb-three { grid-template-columns: minmax(0, 1fr); }
+  .wb-two > .wb-sticky, .wb-three > .wb-sticky { position: static !important; }
+}
 
 /* Buttons */
 .btn {

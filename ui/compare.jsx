@@ -34,7 +34,7 @@ function Comparison({ state, setState, onOpenWorkbench, onBack, pushToast }) {
   const maxOffer = Math.max(...rows.map(r => r.totalOffer), 0);
 
   return (
-    <div className="content" style={{ maxWidth: 1400 }}>
+    <div className="content wide">
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 20 }}>
         <Button variant="ghost" onClick={onBack} icon={<ICONS.ArrowBack/>}>Register</Button>
         <div style={{ flex: 1 }}>
