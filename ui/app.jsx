@@ -152,16 +152,16 @@ function App() {
           </div>
         </div>
 
-        <NavItem icon={<ICONS.Home/>} active={routeName === 'register'} onClick={() => go({ name: 'register' })}>
-          Practice Register<span className="badge">{state.practices.length}</span>
+        <NavItem icon={<ICONS.Home/>} active={routeName === 'register'} onClick={() => go({ name: 'register' })} count={state.practices.length}>
+          Practice Register
         </NavItem>
         <NavItem icon={<ICONS.Scale/>} active={routeName === 'workbench'} onClick={() => {
           const id = route.practiceId || state.practices[0]?.id;
           if (id) go({ name: 'workbench', practiceId: id });
           else pushToast({ msg: 'Add a practice first' });
         }}>Scenario Workbench</NavItem>
-        <NavItem icon={<ICONS.Compare/>} active={routeName === 'compare'} onClick={() => go({ name: 'compare' })}>
-          Comparison<span className="badge">{state.compareIds.length}</span>
+        <NavItem icon={<ICONS.Compare/>} active={routeName === 'compare'} onClick={() => go({ name: 'compare' })} count={state.compareIds.length}>
+          Comparison
         </NavItem>
 
         <div className="nav-section">Reference</div>
@@ -174,7 +174,7 @@ function App() {
           <div style={{ fontSize: 11, color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: 6 }}>
             <ICONS.Drop size={12}/> Local-only · IndexedDB
           </div>
-          <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>v0.3.0 · Rates eff. 1 Jul 2025</div>
+          <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>v0.3.1 · Rates eff. 1 Jul 2025</div>
         </div>
       </aside>
 
@@ -263,10 +263,11 @@ function App() {
   );
 }
 
-function NavItem({ icon, active, onClick, children }) {
+function NavItem({ icon, active, onClick, count, children }) {
   return (
     <button className={'nav-item' + (active ? ' active' : '')} onClick={onClick}>
       {icon} <span style={{ flex: 1 }}>{children}</span>
+      {count != null && <span className="badge">{count}</span>}
     </button>
   );
 }
