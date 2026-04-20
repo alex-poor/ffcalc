@@ -1,6 +1,6 @@
 // workbench.jsx — Screen 3: Scenario Workbench (primary)
 
-const { Button, Modal, TypeChip, Money, VarianceChip, StackedBar, Sparkline, STREAM_COLORS, STREAM_KEYS, STREAM_LABELS, ICONS, AGE_BANDS } = window;
+const { Button, Modal, PromptModal, ConfirmModal, TypeChip, Money, VarianceChip, StackedBar, Sparkline, STREAM_COLORS, STREAM_KEYS, STREAM_LABELS, ICONS, AGE_BANDS } = window;
 
 function Workbench({ practiceId, state, setState, onBack, onCompare, pushToast, pushHistory, layoutVariant, density }) {
   const practice = state.practices.find(p => p.id === practiceId);
@@ -109,41 +109,87 @@ function Workbench({ practiceId, state, setState, onBack, onCompare, pushToast, 
     pushToast({ msg: `Applied template: ${t.name}` });
   };
 
+  // Lifted modal state for prompt/confirm (replaces window.prompt/confirm)
+  const [modal, setModal] = React.useState(null); // { kind: 'prompt'|'confirm', ...props }
+
   const saveCurrentAsTemplate = () => {
-    const name = window.prompt('Name this pass-through template', '');
-    if (!name || !name.trim()) return;
-    pushHistory();
-    const t = {
-      id: 't-' + Math.random().toString(36).slice(2, 9),
-      name: name.trim(),
-      retention: { ...retention },
-    };
-    setState(s => ({ ...s, templates: [...(s.templates || []), t] }));
-    pushToast({ msg: `Saved template: ${t.name}` });
+    setModal({
+      kind: 'prompt',
+      title: 'Save pass-through template',
+      label: 'Template name',
+      placeholder: 'e.g. Generous access rollover',
+      confirmLabel: 'Save',
+      onSubmit: (name) => {
+        pushHistory();
+        const t = {
+          id: 't-' + Math.random().toString(36).slice(2, 9),
+          name, retention: { ...retention },
+        };
+        setState(s => ({ ...s, templates: [...(s.templates || []), t] }));
+        pushToast({ msg: `Saved template: ${t.name}` });
+        setModal(null);
+      },
+    });
   };
 
   const renameTemplate = (id) => {
     const t = (state.templates || []).find(x => x.id === id);
     if (!t) return;
-    const next = window.prompt('Rename template', t.name);
-    if (next == null) return;
-    const trimmed = next.trim();
-    if (!trimmed || trimmed === t.name) return;
-    pushHistory();
-    setState(s => ({
-      ...s,
-      templates: (s.templates || []).map(x => x.id === id ? { ...x, name: trimmed } : x),
-    }));
-    pushToast({ msg: `Renamed template to "${trimmed}"` });
+    setModal({
+      kind: 'prompt',
+      title: 'Rename template',
+      label: 'Template name',
+      initialValue: t.name,
+      confirmLabel: 'Rename',
+      onSubmit: (name) => {
+        if (name !== t.name) {
+          pushHistory();
+          setState(s => ({
+            ...s,
+            templates: (s.templates || []).map(x => x.id === id ? { ...x, name } : x),
+          }));
+          pushToast({ msg: `Renamed template to "${name}"` });
+        }
+        setModal(null);
+      },
+    });
   };
 
   const deleteTemplate = (id) => {
     const t = (state.templates || []).find(x => x.id === id);
     if (!t) return;
-    if (!window.confirm(`Delete template "${t.name}"?`)) return;
-    pushHistory();
-    setState(s => ({ ...s, templates: (s.templates || []).filter(x => x.id !== id) }));
-    pushToast({ msg: `Deleted template: ${t.name}`, action: { label: 'Undo' } });
+    setModal({
+      kind: 'confirm',
+      title: 'Delete template',
+      body: <>Delete template <b>{t.name}</b>?</>,
+      confirmLabel: 'Delete',
+      onConfirm: () => {
+        pushHistory();
+        setState(s => ({ ...s, templates: (s.templates || []).filter(x => x.id !== id) }));
+        pushToast({ msg: `Deleted template: ${t.name}`, action: { label: 'Undo' } });
+      },
+    });
+  };
+
+  const promptRenameScenario = (sc) => {
+    setModal({
+      kind: 'prompt',
+      title: 'Rename scenario',
+      label: 'Scenario name',
+      initialValue: sc.name,
+      confirmLabel: 'Rename',
+      onSubmit: (name) => { renameScenario(sc.id, name); setModal(null); },
+    });
+  };
+
+  const promptDeleteScenario = (sc) => {
+    setModal({
+      kind: 'confirm',
+      title: 'Delete scenario',
+      body: <>Delete scenario <b>{sc.name}</b>? Use the Undo toast to recover immediately.</>,
+      confirmLabel: 'Delete',
+      onConfirm: () => deleteScenario(sc.id),
+    });
   };
 
   const scenarios = state.scenarios.filter(s => s.practiceId === practiceId).sort((a, b) => b.created - a.created);
@@ -159,7 +205,7 @@ function Workbench({ practiceId, state, setState, onBack, onCompare, pushToast, 
         const sc = scenarios.find(s => s.id === id);
         if (sc) setRetention(sc.retention);
       }}
-      renameScenario={renameScenario} deleteScenario={deleteScenario}
+      promptRenameScenario={promptRenameScenario} promptDeleteScenario={promptDeleteScenario}
       templates={templates}
       applyTemplate={applyTemplate} saveCurrentAsTemplate={saveCurrentAsTemplate}
       renameTemplate={renameTemplate} deleteTemplate={deleteTemplate}
@@ -246,23 +292,31 @@ function Workbench({ practiceId, state, setState, onBack, onCompare, pushToast, 
           </div>
         </div>
       </Modal>
+
+      <PromptModal
+        open={modal?.kind === 'prompt'}
+        title={modal?.title} label={modal?.label}
+        initialValue={modal?.initialValue || ''}
+        placeholder={modal?.placeholder}
+        confirmLabel={modal?.confirmLabel}
+        onSubmit={(v) => modal?.onSubmit?.(v)}
+        onClose={() => setModal(null)}
+      />
+      <ConfirmModal
+        open={modal?.kind === 'confirm'}
+        title={modal?.title} body={modal?.body}
+        confirmLabel={modal?.confirmLabel}
+        onConfirm={() => modal?.onConfirm?.()}
+        onClose={() => setModal(null)}
+      />
     </div>
   );
 }
 
-function InputsPane({ practice, result, retention, setRet, setAllRet, resetRet, masterRet, updatePractice, updatePracticeAge, scenarios, selectedScenarioId, setSelectedScenarioId, renameScenario, deleteScenario, templates, applyTemplate, saveCurrentAsTemplate, renameTemplate, deleteTemplate, state }) {
+function InputsPane({ practice, result, retention, setRet, setAllRet, resetRet, masterRet, updatePractice, updatePracticeAge, scenarios, selectedScenarioId, setSelectedScenarioId, promptRenameScenario, promptDeleteScenario, templates, applyTemplate, saveCurrentAsTemplate, renameTemplate, deleteTemplate, state }) {
   const selected = scenarios.find(s => s.id === selectedScenarioId);
-  const onRename = () => {
-    if (!selected) return;
-    const next = window.prompt('Rename scenario', selected.name);
-    if (next != null) renameScenario(selected.id, next);
-  };
-  const onDelete = () => {
-    if (!selected) return;
-    if (window.confirm(`Delete scenario "${selected.name}"? This cannot be undone from here (use the Undo toast).`)) {
-      deleteScenario(selected.id);
-    }
-  };
+  const onRename = () => { if (selected) promptRenameScenario(selected); };
+  const onDelete = () => { if (selected) promptDeleteScenario(selected); };
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div className="card">

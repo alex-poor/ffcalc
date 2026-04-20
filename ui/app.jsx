@@ -42,11 +42,12 @@ function App() {
     }
   }, [pushToast]);
 
-  // Silent check on launch (desktop only).
+  // Silent check on launch, then every 30 minutes. Desktop only.
   React.useEffect(() => {
     if (!window.ffUpdate?.inTauri) return;
-    const t = setTimeout(() => runUpdateCheck(true), 1500);
-    return () => clearTimeout(t);
+    const initial = setTimeout(() => runUpdateCheck(true), 1500);
+    const interval = setInterval(() => runUpdateCheck(true), 30 * 60 * 1000);
+    return () => { clearTimeout(initial); clearInterval(interval); };
   }, [runUpdateCheck]);
 
   // Undo/redo
@@ -176,7 +177,7 @@ function App() {
           <div style={{ fontSize: 11, color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: 6 }}>
             <ICONS.Drop size={12}/> Local-only · IndexedDB
           </div>
-          <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>v0.3.1 · Rates eff. 1 Jul 2025</div>
+          <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>v0.3.2 · Rates eff. 1 Jul 2025</div>
           {updateInfo ? (
             <button
               onClick={() => setUpdateModalOpen(true)}
@@ -294,6 +295,7 @@ function NavItem({ icon, active, onClick, count, children }) {
 }
 
 function TweaksPanel({ tweaks, setTweaks, setState, pushToast, onCheckUpdate, updateStatus }) {
+  const [confirmReset, setConfirmReset] = React.useState(false);
   const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
     "theme": "light",
     "layout": "twoPane",
@@ -362,15 +364,22 @@ function TweaksPanel({ tweaks, setTweaks, setState, pushToast, onCheckUpdate, up
       </button>
 
       <button
-        onClick={() => {
-          if (confirm('Reset all practices and scenarios? This cannot be undone.')) {
-            localStorage.removeItem(window.FFStorageKey);
-            location.reload();
-          }
-        }}
+        onClick={() => setConfirmReset(true)}
         className="btn ghost sm" style={{ width: '100%', marginTop: 8, color: 'var(--text-muted)' }}>
         Reset all data
       </button>
+
+      <window.ConfirmModal
+        open={confirmReset}
+        title="Reset all data"
+        body="This deletes every practice, scenario, and template, and reloads the app. It cannot be undone."
+        confirmLabel="Reset"
+        onConfirm={() => {
+          localStorage.removeItem(window.FFStorageKey);
+          location.reload();
+        }}
+        onClose={() => setConfirmReset(false)}
+      />
     </div>
   );
 }

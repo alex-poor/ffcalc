@@ -27,6 +27,49 @@ function Modal({ open, title, onClose, children, footer, width = 480 }) {
   );
 }
 
+// Prompt for a short text value. Controls: Enter = submit, Esc = cancel.
+function PromptModal({ open, title, label, initialValue = '', placeholder, confirmLabel = 'Save', onSubmit, onClose }) {
+  const [value, setValue] = React.useState(initialValue);
+  React.useEffect(() => { if (open) setValue(initialValue); }, [open, initialValue]);
+  const inputRef = React.useRef(null);
+  React.useEffect(() => { if (open && inputRef.current) inputRef.current.focus(); }, [open]);
+  if (!open) return null;
+  const submit = () => {
+    const v = value.trim();
+    if (!v) return;
+    onSubmit(v);
+  };
+  return (
+    <Modal open={open} title={title} onClose={onClose}
+      footer={<>
+        <Button variant="ghost" onClick={onClose}>Cancel</Button>
+        <Button variant="primary" onClick={submit} disabled={!value.trim()}>{confirmLabel}</Button>
+      </>}>
+      {label && <label style={{ display: 'block', fontSize: 12.5, color: 'var(--text-muted)', marginBottom: 6 }}>{label}</label>}
+      <input ref={inputRef} className="input" value={value} placeholder={placeholder || ''}
+        onChange={e => setValue(e.target.value)}
+        onKeyDown={e => {
+          if (e.key === 'Enter') { e.preventDefault(); submit(); }
+          else if (e.key === 'Escape') { e.preventDefault(); onClose(); }
+        }}/>
+    </Modal>
+  );
+}
+
+// Confirm a destructive action. Body can be a string or node.
+function ConfirmModal({ open, title = 'Are you sure?', body, confirmLabel = 'Confirm', danger = true, onConfirm, onClose }) {
+  if (!open) return null;
+  return (
+    <Modal open={open} title={title} onClose={onClose}
+      footer={<>
+        <Button variant="ghost" onClick={onClose}>Cancel</Button>
+        <Button variant={danger ? 'danger' : 'primary'} onClick={() => { onConfirm(); onClose(); }}>{confirmLabel}</Button>
+      </>}>
+      <div style={{ fontSize: 13.5, color: 'var(--text)', lineHeight: 1.5 }}>{body}</div>
+    </Modal>
+  );
+}
+
 function TypeChip({ type }) {
   if (type === 'Access') return <span className="chip access">VLCA · Access</span>;
   return <span className="chip nonaccess">Non-Access</span>;
@@ -124,4 +167,4 @@ function MoneyLarge({ value, small }) {
   );
 }
 
-Object.assign(window, { Button, Modal, TypeChip, VarianceChip, StackedBar, Sparkline, STREAM_COLORS, STREAM_KEYS, STREAM_LABELS, Money, MoneyLarge });
+Object.assign(window, { Button, Modal, PromptModal, ConfirmModal, TypeChip, VarianceChip, StackedBar, Sparkline, STREAM_COLORS, STREAM_KEYS, STREAM_LABELS, Money, MoneyLarge });
