@@ -16,7 +16,8 @@ JSX_ORDER=(icons.jsx state.jsx shared.jsx register.jsx editor.jsx workbench.jsx 
 [[ -f "$REACT_UMD" ]] || { echo "error: React UMD not found (run: npm install)"; exit 1; }
 
 COMPILED=$(mktemp --suffix=.js)
-trap 'rm -f "$COMPILED"' EXIT
+UPDATER=$(mktemp --suffix=.js)
+trap 'rm -f "$COMPILED" "$UPDATER"' EXIT
 
 for f in "${JSX_ORDER[@]}"; do
   # Each JSX file compiles to its own IIFE so top-level consts don't collide.
@@ -24,6 +25,9 @@ for f in "${JSX_ORDER[@]}"; do
   "$ESBUILD" "$f" --format=iife --jsx=transform --minify
   echo
 done > "$COMPILED"
+
+# Bundle the Tauri updater entry (pulls in plugin JS from node_modules).
+"$ESBUILD" updater-entry.js --bundle --format=iife --minify --platform=browser > "$UPDATER"
 
 {
 cat <<'HTML_HEAD'
@@ -61,6 +65,9 @@ cat engine.js
 echo
 echo '/* thePHO logo assets */'
 cat logo.js
+echo
+echo '/* Tauri updater glue (no-ops in a browser) */'
+cat "$UPDATER"
 echo
 echo '/* FFCalc UI — JSX pre-compiled with esbuild */'
 cat "$COMPILED"

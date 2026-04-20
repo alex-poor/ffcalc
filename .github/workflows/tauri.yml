@@ -58,6 +58,8 @@ jobs:
         id: tauri
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
           releaseName: ${{ startsWith(github.ref, 'refs/tags/') && format('FFCalc {0}', github.ref_name) || '' }}
@@ -97,3 +99,87 @@ jobs:
             src-tauri/target/release/bundle/msi/*.msi
             src-tauri/target/release/bundle/nsis/*.exe
           if-no-files-found: ignore
+
+  # After both platform builds finish, build latest.json and attach it
+  # to the draft release so the in-app updater can discover new versions.
+  publish-manifest:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate latest.json and attach to release
+        uses: actions/github-script@v7
+        env:
+          TAG: ${{ github.ref_name }}
+        with:
+          script: |
+            const tag = process.env.TAG;
+            const version = tag.replace(/^v/, '');
+            const { data: release } = await github.rest.repos.getReleaseByTag({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag,
+            });
+
+            // Find signed bundles + their .sig companions.
+            const assets = release.assets;
+            const pick = (pred) => assets.find(a => pred(a.name));
+            const readSig = async (sigAsset) => {
+              if (!sigAsset) return null;
+              const res = await fetch(sigAsset.browser_download_url, {
+                headers: { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` },
+                redirect: 'follow',
+              });
+              return (await res.text()).trim();
+            };
+
+            const winNsis = pick(n => /\.exe$/i.test(n) && !/\.sig$/i.test(n));
+            const winNsisSig = pick(n => n === (winNsis && winNsis.name + '.sig'));
+            const linuxAppImage = pick(n => /\.AppImage$/.test(n) && !/\.sig$/.test(n));
+            const linuxAppImageSig = pick(n => n === (linuxAppImage && linuxAppImage.name + '.sig'));
+
+            const platforms = {};
+            if (winNsis) {
+              platforms['windows-x86_64'] = {
+                signature: await readSig(winNsisSig) || '',
+                url: winNsis.browser_download_url,
+              };
+            }
+            if (linuxAppImage) {
+              platforms['linux-x86_64'] = {
+                signature: await readSig(linuxAppImageSig) || '',
+                url: linuxAppImage.browser_download_url,
+              };
+            }
+
+            const manifest = {
+              version,
+              notes: release.body || '',
+              pub_date: release.published_at || new Date().toISOString(),
+              platforms,
+            };
+
+            const fs = require('fs');
+            fs.writeFileSync('latest.json', JSON.stringify(manifest, null, 2));
+            core.info(JSON.stringify(manifest, null, 2));
+
+            // Remove any previous latest.json on this release, then upload.
+            const existing = assets.find(a => a.name === 'latest.json');
+            if (existing) {
+              await github.rest.repos.deleteReleaseAsset({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                asset_id: existing.id,
+              });
+            }
+            await github.rest.repos.uploadReleaseAsset({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: release.id,
+              name: 'latest.json',
+              data: fs.readFileSync('latest.json'),
+            });

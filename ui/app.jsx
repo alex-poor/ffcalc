@@ -20,6 +20,33 @@ function App() {
 
   const { toasts, push: pushToast } = window.useToasts();
 
+  // Update checker
+  const [updateInfo, setUpdateInfo] = React.useState(null); // {available, version, body, _update} or null
+  const [updateStatus, setUpdateStatus] = React.useState('idle'); // idle, checking, downloading, error
+  const [updateProgress, setUpdateProgress] = React.useState(0);
+  const [updateMsg, setUpdateMsg] = React.useState('');
+
+  const runUpdateCheck = React.useCallback(async (silent) => {
+    if (!window.ffUpdate) return;
+    setUpdateStatus('checking');
+    const res = await window.ffUpdate.checkForUpdate();
+    setUpdateStatus('idle');
+    if (res.available) {
+      setUpdateInfo(res);
+    } else if (!silent) {
+      if (res.reason === 'browser') pushToast({ msg: 'Updates only check in the desktop app' });
+      else if (res.error) pushToast({ msg: `Update check failed: ${res.error}` });
+      else pushToast({ msg: 'You\u2019re on the latest version' });
+    }
+  }, [pushToast]);
+
+  // Silent check on launch (desktop only).
+  React.useEffect(() => {
+    if (!window.ffUpdate?.inTauri) return;
+    const t = setTimeout(() => runUpdateCheck(true), 1500);
+    return () => clearTimeout(t);
+  }, [runUpdateCheck]);
+
   // Undo/redo
   const history = window.useHistory(state, setState);
 
@@ -180,7 +207,58 @@ function App() {
       </div>
 
       {/* Tweaks panel */}
-      {tweaksOpen && <TweaksPanel tweaks={tweaks} setTweaks={setTweaks} setState={setState} pushToast={pushToast}/>}
+      {tweaksOpen && <TweaksPanel tweaks={tweaks} setTweaks={setTweaks} setState={setState} pushToast={pushToast}
+        onCheckUpdate={() => runUpdateCheck(false)} updateStatus={updateStatus}/>}
+
+      {/* Update-available modal */}
+      {updateInfo && (
+        <div className="modal-back" onClick={() => updateStatus !== 'downloading' && setUpdateInfo(null)}>
+          <div className="modal fade-in" style={{ maxWidth: 520 }} onClick={e => e.stopPropagation()}>
+            <div className="modal-head">
+              <h3>Update available — v{updateInfo.version}</h3>
+            </div>
+            <div className="modal-body">
+              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 10 }}>
+                {`You're on v${updateInfo.currentVersion}. This will download, install, and relaunch the app.`}
+              </div>
+              {updateInfo.body && (
+                <pre style={{
+                  fontSize: 12.5, color: 'var(--text)', background: 'var(--surface-2)',
+                  padding: 12, borderRadius: 'var(--r)', maxHeight: 220, overflow: 'auto',
+                  whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0,
+                }}>{updateInfo.body}</pre>
+              )}
+              {updateStatus === 'downloading' && (
+                <div style={{ marginTop: 14 }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>{updateMsg || 'Downloading\u2026'}</div>
+                  <div style={{ height: 6, background: 'var(--stone)', borderRadius: 100, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: updateProgress + '%', background: 'var(--accent)', transition: 'width 0.2s' }}/>
+                  </div>
+                </div>
+              )}
+              {updateStatus === 'error' && (
+                <div style={{ marginTop: 12, fontSize: 12.5, color: 'var(--accent)' }}>{updateMsg}</div>
+              )}
+            </div>
+            <div className="modal-foot">
+              <button className="btn ghost" disabled={updateStatus === 'downloading'} onClick={() => setUpdateInfo(null)}>Later</button>
+              <button className="btn primary" disabled={updateStatus === 'downloading'} onClick={async () => {
+                setUpdateStatus('downloading'); setUpdateProgress(0); setUpdateMsg('Starting\u2026');
+                try {
+                  await window.ffUpdate.downloadAndInstall(updateInfo, ({ phase, downloaded, total }) => {
+                    if (phase === 'Started') setUpdateMsg('Downloading\u2026');
+                    else if (phase === 'Progress' && total) setUpdateProgress(Math.min(100, Math.round((downloaded / total) * 100)));
+                    else if (phase === 'Finished') setUpdateMsg('Installing\u2026');
+                  });
+                } catch (err) {
+                  setUpdateStatus('error');
+                  setUpdateMsg(String(err?.message || err));
+                }
+              }}>Install and restart</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -193,7 +271,7 @@ function NavItem({ icon, active, onClick, children }) {
   );
 }
 
-function TweaksPanel({ tweaks, setTweaks, setState, pushToast }) {
+function TweaksPanel({ tweaks, setTweaks, setState, pushToast, onCheckUpdate, updateStatus }) {
   const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
     "theme": "light",
     "layout": "twoPane",
@@ -252,6 +330,14 @@ function TweaksPanel({ tweaks, setTweaks, setState, pushToast }) {
           </button>
         </div>
       </TweakGroup>
+
+      <button
+        onClick={onCheckUpdate}
+        disabled={updateStatus === 'checking' || !window.ffUpdate?.inTauri}
+        title={!window.ffUpdate?.inTauri ? 'Only available in the desktop app' : ''}
+        className="btn sm" style={{ width: '100%', marginTop: 8 }}>
+        {updateStatus === 'checking' ? 'Checking\u2026' : 'Check for updates'}
+      </button>
 
       <button
         onClick={() => {
