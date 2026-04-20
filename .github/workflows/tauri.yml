@@ -133,14 +133,22 @@ jobs:
             // Find signed bundles + their .sig companions.
             const assets = release.assets;
             const pick = (pred) => assets.find(a => pred(a.name));
+            // .sig assets live on a draft release; fetch via API (octet-stream)
+            // since browser_download_url 404s until the release is published.
             const readSig = async (sigAsset) => {
               if (!sigAsset) return null;
-              const res = await fetch(sigAsset.browser_download_url, {
-                headers: { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` },
-                redirect: 'follow',
+              const res = await github.request('GET /repos/{owner}/{repo}/releases/assets/{asset_id}', {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                asset_id: sigAsset.id,
+                headers: { accept: 'application/octet-stream' },
               });
-              return (await res.text()).trim();
+              // data is an ArrayBuffer of the file contents
+              return Buffer.from(res.data).toString('utf8').trim();
             };
+            // Stable URL that resolves once the release is published.
+            const stableUrl = (name) =>
+              `https://github.com/${context.repo.owner}/${context.repo.repo}/releases/download/${tag}/${name}`;
 
             const winNsis = pick(n => /\.exe$/i.test(n) && !/\.sig$/i.test(n));
             const winNsisSig = pick(n => n === (winNsis && winNsis.name + '.sig'));
@@ -151,13 +159,13 @@ jobs:
             if (winNsis) {
               platforms['windows-x86_64'] = {
                 signature: await readSig(winNsisSig) || '',
-                url: winNsis.browser_download_url,
+                url: stableUrl(winNsis.name),
               };
             }
             if (linuxAppImage) {
               platforms['linux-x86_64'] = {
                 signature: await readSig(linuxAppImageSig) || '',
-                url: linuxAppImage.browser_download_url,
+                url: stableUrl(linuxAppImage.name),
               };
             }
 
