@@ -174,7 +174,7 @@ function App() {
           <div style={{ fontSize: 11, color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: 6 }}>
             <ICONS.Drop size={12}/> Local-only · IndexedDB
           </div>
-          <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>v0.2.0 · Rates eff. 1 Jul 2025</div>
+          <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>v0.3.0 · Rates eff. 1 Jul 2025</div>
         </div>
       </aside>
 
