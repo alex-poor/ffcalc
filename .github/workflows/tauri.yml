@@ -54,6 +54,25 @@ jobs:
 
       - run: npm ci
 
+      - name: Read release notes
+        id: notes
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          if [ -f RELEASE_NOTES.md ]; then
+            {
+              echo 'body<<EOF'
+              cat RELEASE_NOTES.md
+              echo 'EOF'
+            } >> "$GITHUB_OUTPUT"
+          else
+            {
+              echo 'body<<EOF'
+              echo 'See the assets below to download and install this version.'
+              echo 'EOF'
+            } >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: tauri-apps/tauri-action@v0
         id: tauri
         env:
@@ -63,6 +82,7 @@ jobs:
         with:
           tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
           releaseName: ${{ startsWith(github.ref, 'refs/tags/') && format('FFCalc {0}', github.ref_name) || '' }}
+          releaseBody: ${{ steps.notes.outputs.body }}
           releaseDraft: true
           prerelease: false
 

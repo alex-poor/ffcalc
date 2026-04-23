@@ -6,10 +6,10 @@ function PracticeRegister({ state, setState, onOpenPractice, onEditPractice, onA
   const [confirmDelete, setConfirmDelete] = React.useState(null);
   const [menuOpen, setMenuOpen] = React.useState(null);
 
-  // Compute stats per practice using default scenario (15% flat) so the register has numbers
+  // Compute stats per practice using default scenario (10% flat) so the register has numbers
   const rows = React.useMemo(() => state.practices.map(p => {
     const r = window.ffCompute(p);
-    const defaultRetention = 0.15;
+    const defaultRetention = 0.10;
     const offer = r.grandTotal * (1 - defaultRetention);
     let variance = null;
     if (p.baseline) {
@@ -79,7 +79,7 @@ function PracticeRegister({ state, setState, onOpenPractice, onEditPractice, onA
               <th className="num">Offer to practice</th>
               <th className="num">Variance vs current</th>
               <th>Last modified</th>
-              <th style={{ width: 40 }}></th>
+              <th style={{ width: 140 }}></th>
             </tr>
           </thead>
           <tbody>
@@ -96,15 +96,16 @@ function PracticeRegister({ state, setState, onOpenPractice, onEditPractice, onA
                 <td className="num"><Money value={total}/></td>
                 <td className="num" style={{ color: 'var(--text-strong)', fontWeight: 500 }}>
                   <Money value={offer}/>
-                  <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: 12, marginLeft: 4 }}>@ 15%</span>
+                  <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: 12, marginLeft: 4 }}>@ 90% pass</span>
                 </td>
                 <td className="num">
                   {variance != null ? <VarianceChip value={variance}/> : <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>no baseline</span>}
                 </td>
                 <td style={{ color: 'var(--text-muted)', fontSize: 13 }}>{window.fmtDate(practice.modified)}</td>
                 <td onClick={e => e.stopPropagation()}>
-                  <div style={{ position: 'relative' }}>
-                    <button className="btn ghost icon sm" onClick={() => setMenuOpen(menuOpen === practice.id ? null : practice.id)}>
+                  <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', position: 'relative' }}>
+                    <Button size="sm" onClick={() => onEditPractice(practice.id)} icon={<ICONS.Edit/>}>Edit</Button>
+                    <button className="btn ghost icon sm" title="More actions" onClick={() => setMenuOpen(menuOpen === practice.id ? null : practice.id)}>
                       <ICONS.More/>
                     </button>
                     {menuOpen === practice.id && (
@@ -114,7 +115,6 @@ function PracticeRegister({ state, setState, onOpenPractice, onEditPractice, onA
                         borderRadius: 'var(--r)', boxShadow: 'var(--shadow-lg)',
                         minWidth: 180, zIndex: 20, padding: 4,
                       }}>
-                        <MenuItem icon={<ICONS.Edit/>} onClick={() => { onEditPractice(practice.id); setMenuOpen(null); }}>Edit demographics</MenuItem>
                         <MenuItem icon={<ICONS.Copy/>} onClick={() => duplicate(practice)}>Duplicate</MenuItem>
                         <MenuItem icon={<ICONS.Download/>} onClick={() => { pushToast({msg: 'CSV exported'}); setMenuOpen(null); }}>Export CSV</MenuItem>
                         <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }}/>
@@ -131,7 +131,7 @@ function PracticeRegister({ state, setState, onOpenPractice, onEditPractice, onA
 
       <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-dim)', fontSize: 12 }}>
         <ICONS.Info size={13}/>
-        Offer column assumes 85% flat pass-through — open a practice to set per-stream pass-through and save named scenarios.
+        Offer column assumes 90% flat pass-through — open a practice to set per-stream pass-through and save named scenarios.
       </div>
 
       <Modal open={!!confirmDelete} title="Delete practice?" onClose={() => setConfirmDelete(null)}

@@ -133,9 +133,15 @@ function App() {
       density={tweaks.density}
       onBack={() => go({ name: 'register' })}
       onCompare={() => go({ name: 'compare' })}
+      onEditPractice={(id) => go({ name: 'editor', practiceId: id })}
     />;
   } else if (routeName === 'compare') {
     screen = <window.Comparison {...common}
+      onBack={() => go({ name: 'register' })}
+      onOpenWorkbench={id => go({ name: 'workbench', practiceId: id })}
+    />;
+  } else if (routeName === 'network') {
+    screen = <window.Network {...common}
       onBack={() => go({ name: 'register' })}
       onOpenWorkbench={id => go({ name: 'workbench', practiceId: id })}
     />;
@@ -166,6 +172,9 @@ function App() {
         <NavItem icon={<ICONS.Compare/>} active={routeName === 'compare'} onClick={() => go({ name: 'compare' })} count={state.compareIds.length}>
           Comparison
         </NavItem>
+        <NavItem icon={<ICONS.Users/>} active={routeName === 'network'} onClick={() => go({ name: 'network' })}>
+          Network
+        </NavItem>
 
         <div className="nav-section">Reference</div>
         <NavItem icon={<ICONS.Book/>} active={routeName === 'rates'} onClick={() => go({ name: 'rates' })}>Rate Reference</NavItem>
@@ -177,7 +186,7 @@ function App() {
           <div style={{ fontSize: 11, color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: 6 }}>
             <ICONS.Drop size={12}/> Local-only · IndexedDB
           </div>
-          <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>v0.3.2 · Rates eff. 1 Jul 2025</div>
+          <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>v0.4.0 · Rates eff. 1 Jul 2025</div>
           {updateInfo ? (
             <button
               onClick={() => setUpdateModalOpen(true)}

@@ -216,7 +216,12 @@
   function compute(practice) {
     const practiceType = normalisePracticeType(practice.practiceType);
     const bands = practice.ageCounts || {};
-    const total = AGE_BANDS.reduce((s, b) => s + (bands[b] || 0), 0);
+    const joint = practice.jointCounts || {};
+    const useJoint = !!practice.useJoint && Object.values(joint).some(v => v > 0);
+
+    const jointTotal = useJoint ? Object.values(joint).reduce((s, v) => s + (v || 0), 0) : 0;
+    const marginalTotal = AGE_BANDS.reduce((s, b) => s + (bands[b] || 0), 0);
+    const total = useJoint ? jointTotal : marginalTotal;
     if (total === 0) return emptyResult();
 
     const pF = clamp01((practice.femaleCount ?? total * 0.5) / total);
@@ -225,17 +230,36 @@
     const pHuhc = clamp01((practice.huhcCount || 0) / total);
     const pCsc = clamp01((practice.cscCount || 0) / total);
 
+    // Count of patients in (ab, g, eth, dep) cell — from jointCounts or derived from marginals.
+    const cellCount = (ab, g, eth, dep) => {
+      if (useJoint) return joint[`${ab}|${g}|${eth}|${dep}`] || 0;
+      const ageCount = bands[ab] || 0;
+      const pG = g === 'F' ? pF : 1 - pF;
+      const pE = eth === 'maori-pacific' ? pMP : 1 - pMP;
+      const pD = dep === 'dep9-10' ? pDep910 : 1 - pDep910;
+      return ageCount * pG * pE * pD;
+    };
+    const ageGenderCount = (ab, g) => {
+      if (useJoint) {
+        let s = 0;
+        for (const eth of ['maori-pacific', 'other']) {
+          for (const dep of ['dep1-8', 'dep9-10']) {
+            s += joint[`${ab}|${g}|${eth}|${dep}`] || 0;
+          }
+        }
+        return s;
+      }
+      const pG = g === 'F' ? pF : 1 - pF;
+      return (bands[ab] || 0) * pG;
+    };
+
     let flTotal = 0, hopTotal = 0, siaTotal = 0, cpTotal = 0;
     const flCells = {}, hopCells = {}, siaCells = {}, cpCells = {};
 
     for (const ab of AGE_BANDS) {
-      const ageCount = bands[ab] || 0;
-      if (ageCount === 0) continue;
-
       for (const g of ['F', 'M']) {
-        const pG = g === 'F' ? pF : 1 - pF;
-        if (pG === 0) continue;
-        const agCount = ageCount * pG;
+        const agCount = ageGenderCount(ab, g);
+        if (agCount === 0) continue;
 
         // First-Level: walk all four (HUHC × CSC) joint slices to apply base + top-up correctly.
         for (const huhc of ['N', 'Y']) {
@@ -263,42 +287,39 @@
         const blended = blendedBase + cscAddon;
         flCells[flLabel] = { label: flLabel, count: agCount, rate: blended, amount: agCount * blended };
 
-        const agNonHuhc = agCount * (1 - pHuhc);
-
         for (const eth of ['maori-pacific', 'other']) {
-          const pE = eth === 'maori-pacific' ? pMP : 1 - pMP;
-          if (pE === 0) continue;
           for (const dep of ['dep1-8', 'dep9-10']) {
-            const pD = dep === 'dep9-10' ? pDep910 : 1 - pDep910;
-            if (pD === 0) continue;
+            const cc = cellCount(ab, g, eth, dep);
+            if (cc === 0) continue;
+            const ccNonHuhc = cc * (1 - pHuhc);
 
             const hopRate = idx.hop.get(`${eth}|${dep}`) || 0;
-            const hopContrib = agNonHuhc * pE * pD * hopRate;
+            const hopContrib = ccNonHuhc * hopRate;
             hopTotal += hopContrib;
             const hopLabel = `${eth === 'maori-pacific' ? 'Māori/Pacific' : 'Other'} · ${dep === 'dep9-10' ? 'Dep 9-10' : 'Dep 1-8'}`;
             if (!hopCells[hopLabel]) hopCells[hopLabel] = { label: hopLabel, count: 0, rate: hopRate, amount: 0 };
-            hopCells[hopLabel].count += agNonHuhc * pE * pD;
+            hopCells[hopLabel].count += ccNonHuhc;
             hopCells[hopLabel].amount += hopContrib;
 
             const siaRate = idx.sia.get(`${ab}|${g}|${eth}|${dep}`) || 0;
-            const siaContrib = agNonHuhc * pE * pD * siaRate;
+            const siaContrib = ccNonHuhc * siaRate;
             siaTotal += siaContrib;
             const siaLabel = `${ab} · ${eth === 'maori-pacific' ? 'M/P' : 'Other'}`;
             if (!siaCells[siaLabel]) siaCells[siaLabel] = { label: siaLabel, count: 0, amount: 0, _wRate: 0, _w: 0 };
-            siaCells[siaLabel].count += agNonHuhc * pE * pD;
+            siaCells[siaLabel].count += ccNonHuhc;
             siaCells[siaLabel].amount += siaContrib;
-            siaCells[siaLabel]._wRate += siaRate * agNonHuhc * pE * pD;
-            siaCells[siaLabel]._w += agNonHuhc * pE * pD;
+            siaCells[siaLabel]._wRate += siaRate * ccNonHuhc;
+            siaCells[siaLabel]._w += ccNonHuhc;
 
             const cpRate = idx.careplus.get(`${ab}|${g}|${dep}|${eth}`) || 0;
-            const cpContrib = agCount * pE * pD * cpRate;
+            const cpContrib = cc * cpRate;
             cpTotal += cpContrib;
             const cpLabel = `${ab} · ${eth === 'maori-pacific' ? 'M/P' : 'Other'}`;
             if (!cpCells[cpLabel]) cpCells[cpLabel] = { label: cpLabel, count: 0, amount: 0, _wRate: 0, _w: 0 };
-            cpCells[cpLabel].count += agCount * pE * pD;
+            cpCells[cpLabel].count += cc;
             cpCells[cpLabel].amount += cpContrib;
-            cpCells[cpLabel]._wRate += cpRate * agCount * pE * pD;
-            cpCells[cpLabel]._w += agCount * pE * pD;
+            cpCells[cpLabel]._wRate += cpRate * cc;
+            cpCells[cpLabel]._w += cc;
           }
         }
       }

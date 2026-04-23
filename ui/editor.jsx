@@ -2,6 +2,50 @@
 
 const { Button, ICONS, AGE_BANDS } = window;
 
+const ETHNICITIES = ['maori-pacific', 'other'];
+const DEP_BANDS = ['dep1-8', 'dep9-10'];
+const GENDERS = ['F', 'M'];
+
+function jointKey(ab, g, eth, dep) { return `${ab}|${g}|${eth}|${dep}`; }
+
+function seedJointFromMarginals(ageCounts, femaleCount, maoriPacificCount, dep9to10Count) {
+  const out = {};
+  const total = AGE_BANDS.reduce((s, b) => s + (ageCounts[b] || 0), 0);
+  if (total === 0) return out;
+  const pF = (femaleCount ?? total * 0.5) / total;
+  const pMP = (maoriPacificCount || 0) / total;
+  const pDep = (dep9to10Count || 0) / total;
+  for (const ab of AGE_BANDS) {
+    const ac = ageCounts[ab] || 0;
+    for (const g of GENDERS) {
+      const pG = g === 'F' ? pF : 1 - pF;
+      for (const eth of ETHNICITIES) {
+        const pE = eth === 'maori-pacific' ? pMP : 1 - pMP;
+        for (const dep of DEP_BANDS) {
+          const pD = dep === 'dep9-10' ? pDep : 1 - pDep;
+          out[jointKey(ab, g, eth, dep)] = Math.round(ac * pG * pE * pD);
+        }
+      }
+    }
+  }
+  return out;
+}
+
+function sumJointForBand(joint, ab) {
+  let s = 0;
+  for (const g of GENDERS) for (const eth of ETHNICITIES) for (const dep of DEP_BANDS) {
+    s += joint[jointKey(ab, g, eth, dep)] || 0;
+  }
+  return s;
+}
+function sumJointByDim(joint, filter) {
+  let s = 0;
+  for (const ab of AGE_BANDS) for (const g of GENDERS) for (const eth of ETHNICITIES) for (const dep of DEP_BANDS) {
+    if (filter(ab, g, eth, dep)) s += joint[jointKey(ab, g, eth, dep)] || 0;
+  }
+  return s;
+}
+
 function PracticeEditor({ practiceId, state, setState, onSave, onOpenWorkbench, onBack, pushToast, pushHistory, isNew }) {
   const existing = state.practices.find(p => p.id === practiceId);
   const [draft, setDraft] = React.useState(() => existing ? JSON.parse(JSON.stringify(existing)) : {
@@ -14,6 +58,8 @@ function PracticeEditor({ practiceId, state, setState, onSave, onOpenWorkbench, 
     dep9to10Count: 0,
     huhcCount: null,
     cscCount: 0,
+    useJoint: false,
+    jointCounts: {},
     baseline: null,
     created: Date.now(),
     modified: Date.now(),
@@ -27,15 +73,31 @@ function PracticeEditor({ practiceId, state, setState, onSave, onOpenWorkbench, 
   const update = (patch) => setDraft(d => ({ ...d, ...patch, modified: Date.now() }));
   const updateAge = (band, v) => update({ ageCounts: { ...draft.ageCounts, [band]: Math.max(0, v || 0) }});
 
+  const joint = draft.jointCounts || {};
+  const setJointCell = (ab, g, eth, dep, v) => update({
+    jointCounts: { ...joint, [jointKey(ab, g, eth, dep)]: Math.max(0, v || 0) },
+  });
+  const enableJoint = () => {
+    const seed = Object.keys(joint).length > 0 ? joint : seedJointFromMarginals(draft.ageCounts, draft.femaleCount, draft.maoriPacificCount, draft.dep9to10Count);
+    update({ useJoint: true, jointCounts: seed });
+  };
+  const disableJoint = () => update({ useJoint: false });
+  const reseedJoint = () => {
+    update({ jointCounts: seedJointFromMarginals(draft.ageCounts, draft.femaleCount, draft.maoriPacificCount, draft.dep9to10Count) });
+    pushToast({ msg: 'Cross-tab reseeded from marginals' });
+  };
+
   // Validation
   const errors = {};
   const warnings = {};
   if (!draft.name.trim()) errors.name = 'Practice name is required';
-  if (draft.maoriPacificCount > total) errors.mp = 'Cannot exceed total';
-  if (draft.dep9to10Count > total) errors.dep = 'Cannot exceed total';
+  if (!draft.useJoint) {
+    if (draft.maoriPacificCount > total) errors.mp = 'Cannot exceed total';
+    if (draft.dep9to10Count > total) errors.dep = 'Cannot exceed total';
+    if (femaleCount > total) errors.female = 'Cannot exceed total';
+    if (total > 0 && (femalePct < 0.4 || femalePct > 0.6)) warnings.female = `${(femalePct * 100).toFixed(0)}% female seems unusual`;
+  }
   if ((draft.cscCount || 0) > total) errors.csc = 'Cannot exceed total';
-  if (femaleCount > total) errors.female = 'Cannot exceed total';
-  if (total > 0 && (femalePct < 0.4 || femalePct > 0.6)) warnings.female = `${(femalePct * 100).toFixed(0)}% female seems unusual`;
 
   const hasErrors = Object.keys(errors).length > 0;
 
@@ -145,52 +207,64 @@ function PracticeEditor({ practiceId, state, setState, onSave, onOpenWorkbench, 
       </div>
 
       <div className="card" style={{ marginBottom: 20 }}>
-        <div className="card-head"><h3>Marginal counts</h3></div>
-        <div className="card-body" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 18 }}>
-          <div className="field">
-            <label>Female count <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>(optional — defaults 50%)</span></label>
-            <input className={'input num' + (errors.female ? ' error' : warnings.female ? ' warn' : '')}
-              type="number" min="0" placeholder={total ? String(Math.round(total * 0.5)) : '—'}
-              value={draft.femaleCount ?? ''} onChange={e => update({ femaleCount: e.target.value === '' ? null : parseInt(e.target.value, 10) })}/>
-            {errors.female && <div className="hint error">{errors.female}</div>}
-            {!errors.female && warnings.female && <div className="hint warn">⚠ {warnings.female}</div>}
-            {!errors.female && !warnings.female && total > 0 && (
-              <div className="hint">= {(femalePct * 100).toFixed(1)}% of enrolled</div>
-            )}
+        <div className="card-head">
+          <h3>Demographic breakdown</h3>
+          <div className="seg" style={{ marginLeft: 'auto' }}>
+            <button className={!draft.useJoint ? 'on' : ''} onClick={disableJoint}>Marginal totals</button>
+            <button className={draft.useJoint ? 'on' : ''} onClick={enableJoint}>Cross-tab (joint)</button>
           </div>
-
-          <div className="field">
-            <label>Māori + Pacific count</label>
-            <input className={'input num' + (errors.mp ? ' error' : '')}
-              type="number" min="0"
-              value={draft.maoriPacificCount || ''} onChange={e => update({ maoriPacificCount: parseInt(e.target.value, 10) || 0 })}/>
-            {errors.mp && <div className="hint error">{errors.mp}</div>}
-            {!errors.mp && total > 0 && <div className="hint">= {((draft.maoriPacificCount / total) * 100).toFixed(1)}% of enrolled</div>}
-          </div>
-
-          <div className="field">
-            <label>Quintile 5 (Dep 9-10) count</label>
-            <input className={'input num' + (errors.dep ? ' error' : '')}
-              type="number" min="0"
-              value={draft.dep9to10Count || ''} onChange={e => update({ dep9to10Count: parseInt(e.target.value, 10) || 0 })}/>
-            {errors.dep && <div className="hint error">{errors.dep}</div>}
-          </div>
-
-          <div className="field">
-            <label>Community Services Card count</label>
-            <input className={'input num' + (errors.csc ? ' error' : '')}
-              type="number" min="0"
-              value={draft.cscCount || ''} onChange={e => update({ cscCount: parseInt(e.target.value, 10) || 0 })}/>
-            {errors.csc && <div className="hint error">{errors.csc}</div>}
-          </div>
-
-          <div className="field" style={{ gridColumn: '1 / -1' }}>
-            <label>HUHC count <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>(optional)</span></label>
-            <input className="input num" type="number" min="0" style={{ maxWidth: 240 }}
-              value={draft.huhcCount ?? ''} onChange={e => update({ huhcCount: e.target.value === '' ? null : parseInt(e.target.value, 10) })}
-              placeholder="—"/>
-            <div className="hint">HUHC count is usually absent from Karo reports. Leave blank to treat as 0.</div>
-          </div>
+        </div>
+        <div className="card-body" style={{ padding: '14px 18px' }}>
+          {!draft.useJoint ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 18 }}>
+              <div className="field">
+                <label>Female count <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>(optional — defaults 50%)</span></label>
+                <input className={'input num' + (errors.female ? ' error' : warnings.female ? ' warn' : '')}
+                  type="number" min="0" placeholder={total ? String(Math.round(total * 0.5)) : '—'}
+                  value={draft.femaleCount ?? ''} onChange={e => update({ femaleCount: e.target.value === '' ? null : parseInt(e.target.value, 10) })}/>
+                {errors.female && <div className="hint error">{errors.female}</div>}
+                {!errors.female && warnings.female && <div className="hint warn">⚠ {warnings.female}</div>}
+                {!errors.female && !warnings.female && total > 0 && (
+                  <div className="hint">= {(femalePct * 100).toFixed(1)}% of enrolled</div>
+                )}
+              </div>
+              <div className="field">
+                <label>Māori + Pacific count</label>
+                <input className={'input num' + (errors.mp ? ' error' : '')}
+                  type="number" min="0"
+                  value={draft.maoriPacificCount || ''} onChange={e => update({ maoriPacificCount: parseInt(e.target.value, 10) || 0 })}/>
+                {errors.mp && <div className="hint error">{errors.mp}</div>}
+                {!errors.mp && total > 0 && <div className="hint">= {((draft.maoriPacificCount / total) * 100).toFixed(1)}% of enrolled</div>}
+              </div>
+              <div className="field">
+                <label>Quintile 5 (Dep 9-10) count</label>
+                <input className={'input num' + (errors.dep ? ' error' : '')}
+                  type="number" min="0"
+                  value={draft.dep9to10Count || ''} onChange={e => update({ dep9to10Count: parseInt(e.target.value, 10) || 0 })}/>
+                {errors.dep && <div className="hint error">{errors.dep}</div>}
+              </div>
+              <div className="field">
+                <label>Community Services Card count</label>
+                <input className={'input num' + (errors.csc ? ' error' : '')}
+                  type="number" min="0"
+                  value={draft.cscCount || ''} onChange={e => update({ cscCount: parseInt(e.target.value, 10) || 0 })}/>
+                {errors.csc && <div className="hint error">{errors.csc}</div>}
+              </div>
+              <div className="field" style={{ gridColumn: '1 / -1' }}>
+                <label>HUHC count <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>(optional)</span></label>
+                <input className="input num" type="number" min="0" style={{ maxWidth: 240 }}
+                  value={draft.huhcCount ?? ''} onChange={e => update({ huhcCount: e.target.value === '' ? null : parseInt(e.target.value, 10) })}
+                  placeholder="—"/>
+                <div className="hint">HUHC count is usually absent from Karo reports. Leave blank to treat as 0.</div>
+              </div>
+            </div>
+          ) : (
+            <JointCrossTab
+              draft={draft} total={total} joint={joint}
+              setJointCell={setJointCell} reseedJoint={reseedJoint}
+              errors={errors} update={update}
+            />
+          )}
         </div>
       </div>
 
@@ -222,6 +296,127 @@ function PracticeEditor({ practiceId, state, setState, onSave, onOpenWorkbench, 
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function JointCrossTab({ draft, total, joint, setJointCell, reseedJoint, errors, update }) {
+  const jointTotal = AGE_BANDS.reduce((s, ab) => s + sumJointForBand(joint, ab), 0);
+  const derivedFemale = sumJointByDim(joint, (ab, g) => g === 'F');
+  const derivedMP = sumJointByDim(joint, (ab, g, eth) => eth === 'maori-pacific');
+  const derivedDep = sumJointByDim(joint, (ab, g, eth, dep) => dep === 'dep9-10');
+
+  return (
+    <div>
+      <div style={{
+        padding: '12px 14px', marginBottom: 14,
+        background: 'var(--surface-2)', borderRadius: 'var(--r)',
+        fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.55,
+      }}>
+        Each cell is the count of patients in that exact age × sex × ethnicity × deprivation combination.
+        SIA and CarePlus funding use the joint distribution directly when supplied.
+        Click <button className="btn ghost sm" style={{ padding: '2px 8px', fontSize: 11.5, display: 'inline-flex', marginLeft: 2, marginRight: 2 }} onClick={reseedJoint}>Reseed from marginals</button>
+        to repopulate from the marginal totals (assumes independence between dimensions).
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {AGE_BANDS.map(ab => {
+          const bandSum = sumJointForBand(joint, ab);
+          const bandExpected = draft.ageCounts[ab] || 0;
+          const mismatch = Math.abs(bandSum - bandExpected) > 0.5;
+          return (
+            <div key={ab} style={{
+              border: '1px solid var(--border)', borderRadius: 'var(--r)',
+              background: 'var(--surface)', overflow: 'hidden',
+            }}>
+              <div style={{
+                display: 'flex', alignItems: 'baseline', gap: 10,
+                padding: '8px 12px', background: 'var(--surface-2)',
+                fontSize: 13, borderBottom: '1px solid var(--border)',
+              }}>
+                <b style={{ color: 'var(--text-strong)' }}>Age {ab}</b>
+                <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+                  cells sum: <b className="num" style={{ color: mismatch ? 'var(--amber-strong, #8a5a00)' : 'var(--text-strong)' }}>{window.fmtNumber(bandSum)}</b>
+                  {' · '}
+                  band total: <span className="num">{window.fmtNumber(bandExpected)}</span>
+                  {mismatch && <span style={{ color: 'var(--amber-strong, #8a5a00)', marginLeft: 8 }}>
+                    ⚠ differ by {window.fmtNumber(Math.abs(bandSum - bandExpected))}
+                  </span>}
+                </span>
+              </div>
+              <table className="table" style={{ fontSize: 12.5 }}>
+                <thead>
+                  <tr>
+                    <th style={{ padding: '6px 12px', textAlign: 'left', width: 80 }}></th>
+                    <th className="num" style={{ padding: '6px 8px' }}>M/P · Dep 1-8</th>
+                    <th className="num" style={{ padding: '6px 8px' }}>M/P · Dep 9-10</th>
+                    <th className="num" style={{ padding: '6px 8px' }}>Other · Dep 1-8</th>
+                    <th className="num" style={{ padding: '6px 8px' }}>Other · Dep 9-10</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {GENDERS.map(g => (
+                    <tr key={g}>
+                      <td style={{ padding: '4px 12px', color: 'var(--text-muted)', fontWeight: 500 }}>
+                        {g === 'F' ? 'Female' : 'Male'}
+                      </td>
+                      {ETHNICITIES.flatMap(eth => DEP_BANDS.map(dep => {
+                        const v = joint[jointKey(ab, g, eth, dep)] ?? 0;
+                        return (
+                          <td key={`${eth}-${dep}`} style={{ padding: '4px 6px' }}>
+                            <input className="input num" type="number" min="0"
+                              style={{ padding: '4px 6px', fontSize: 12.5, textAlign: 'right' }}
+                              value={v || ''} placeholder="0"
+                              onChange={e => setJointCell(ab, g, eth, dep, parseInt(e.target.value, 10))}/>
+                          </td>
+                        );
+                      }))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          );
+        })}
+      </div>
+
+      <div style={{
+        marginTop: 14, padding: '12px 14px',
+        background: 'var(--pink-soft)', borderRadius: 'var(--r)',
+        display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16,
+      }}>
+        <DerivedStat label="Joint total" value={jointTotal} sub={total !== jointTotal ? `age-band total: ${window.fmtNumber(total)}` : 'matches age bands'}/>
+        <DerivedStat label="Female" value={derivedFemale} sub={jointTotal ? `${((derivedFemale / jointTotal) * 100).toFixed(0)}%` : ''}/>
+        <DerivedStat label="Māori + Pacific" value={derivedMP} sub={jointTotal ? `${((derivedMP / jointTotal) * 100).toFixed(0)}%` : ''}/>
+        <DerivedStat label="Dep 9-10" value={derivedDep} sub={jointTotal ? `${((derivedDep / jointTotal) * 100).toFixed(0)}%` : ''}/>
+      </div>
+
+      <div style={{ marginTop: 18, display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 18 }}>
+        <div className="field">
+          <label>Community Services Card count</label>
+          <input className={'input num' + (errors.csc ? ' error' : '')}
+            type="number" min="0"
+            value={draft.cscCount || ''} onChange={e => update({ cscCount: parseInt(e.target.value, 10) || 0 })}/>
+          <div className="hint">CSC is tracked as a marginal — applied across all joint cells.</div>
+        </div>
+        <div className="field">
+          <label>HUHC count <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>(optional)</span></label>
+          <input className="input num" type="number" min="0"
+            value={draft.huhcCount ?? ''} onChange={e => update({ huhcCount: e.target.value === '' ? null : parseInt(e.target.value, 10) })}
+            placeholder="—"/>
+          <div className="hint">Leave blank to treat as 0.</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DerivedStat({ label, value, sub }) {
+  return (
+    <div>
+      <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{label}</div>
+      <div className="num" style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-strong)', marginTop: 2 }}>{window.fmtNumber(value)}</div>
+      {sub && <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>{sub}</div>}
     </div>
   );
 }

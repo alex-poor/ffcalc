@@ -2,9 +2,9 @@
 
 const { Button, Modal, PromptModal, ConfirmModal, TypeChip, Money, VarianceChip, StackedBar, Sparkline, STREAM_COLORS, STREAM_KEYS, STREAM_LABELS, ICONS, AGE_BANDS } = window;
 
-function Workbench({ practiceId, state, setState, onBack, onCompare, pushToast, pushHistory, layoutVariant, density }) {
+function Workbench({ practiceId, state, setState, onBack, onCompare, onEditPractice, pushToast, pushHistory, layoutVariant, density }) {
   const practice = state.practices.find(p => p.id === practiceId);
-  const [retention, setRetention] = React.useState({ firstLevel: 15, hop: 20, sia: 10, careplus: 15 });
+  const [retention, setRetention] = React.useState({ firstLevel: 10, hop: 10, sia: 10, careplus: 10 });
   const [expanded, setExpanded] = React.useState({});
   const [saveOpen, setSaveOpen] = React.useState(false);
   const [scenarioName, setScenarioName] = React.useState('');
@@ -261,6 +261,10 @@ function Workbench({ practiceId, state, setState, onBack, onCompare, pushToast, 
           <h1 style={{ fontSize: 22, fontWeight: 600, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 12 }}>
             {practice.name}
             <TypeChip type={practice.practiceType}/>
+            <button className="btn ghost sm" onClick={() => onEditPractice?.(practice.id)} title="Edit demographics & baseline"
+              style={{ fontSize: 12, padding: '3px 8px', gap: 4 }}>
+              <ICONS.Edit size={12}/> Edit practice
+            </button>
           </h1>
           <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>
             Scenario Workbench · {window.fmtNumber(result.totalPatients)} enrolled
@@ -284,7 +288,7 @@ function Workbench({ practiceId, state, setState, onBack, onCompare, pushToast, 
         <div className="field">
           <label>Scenario name</label>
           <input autoFocus className="input"
-            placeholder="e.g. 2026 base offer — 85% pass-through"
+            placeholder="e.g. 2026 base offer — 90% pass-through"
             value={scenarioName} onChange={e => setScenarioName(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && saveScenario()}/>
           <div className="hint">

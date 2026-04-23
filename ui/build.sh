@@ -10,14 +10,15 @@ OUT=FFCalc.html
 ESBUILD=../node_modules/.bin/esbuild
 REACT_UMD=../node_modules/react/umd/react.production.min.js
 REACT_DOM_UMD=../node_modules/react-dom/umd/react-dom.production.min.js
-JSX_ORDER=(icons.jsx state.jsx shared.jsx register.jsx editor.jsx workbench.jsx compare.jsx rates.jsx data.jsx app.jsx)
+JSX_ORDER=(icons.jsx state.jsx shared.jsx register.jsx editor.jsx workbench.jsx compare.jsx network.jsx rates.jsx data.jsx app.jsx)
 
 [[ -x "$ESBUILD" ]] || { echo "error: esbuild not found (run: npm install)"; exit 1; }
 [[ -f "$REACT_UMD" ]] || { echo "error: React UMD not found (run: npm install)"; exit 1; }
 
 COMPILED=$(mktemp --suffix=.js)
 UPDATER=$(mktemp --suffix=.js)
-trap 'rm -f "$COMPILED" "$UPDATER"' EXIT
+PDF=$(mktemp --suffix=.js)
+trap 'rm -f "$COMPILED" "$UPDATER" "$PDF"' EXIT
 
 for f in "${JSX_ORDER[@]}"; do
   # Each JSX file compiles to its own IIFE so top-level consts don't collide.
@@ -28,6 +29,9 @@ done > "$COMPILED"
 
 # Bundle the Tauri updater entry (pulls in plugin JS from node_modules).
 "$ESBUILD" updater-entry.js --bundle --format=iife --minify --platform=browser > "$UPDATER"
+
+# Bundle jsPDF + autotable, exposed as window.ffPDF.
+"$ESBUILD" pdf-entry.js --bundle --format=iife --minify --platform=browser > "$PDF"
 
 {
 cat <<'HTML_HEAD'
@@ -68,6 +72,9 @@ cat logo.js
 echo
 echo '/* Tauri updater glue (no-ops in a browser) */'
 cat "$UPDATER"
+echo
+echo '/* PDF export (jsPDF + autotable, exposed as window.ffPDF) */'
+cat "$PDF"
 echo
 echo '/* FFCalc UI — JSX pre-compiled with esbuild */'
 cat "$COMPILED"
