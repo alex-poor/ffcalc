@@ -1,14 +1,31 @@
-# FFCalc v0.4.0
+# FFCalc v0.4.1
 
-## New features
+## Added
 
-- **Network view** — portfolio-wide rollup across every practice with a single network pass-through slider. See total enrolled, gross PHO revenue, retained $, and offered $ at thePHO level, plus a per-practice contribution table with variance against each practice's recorded baseline.
-- **Offer vs Current PHO comparison** — a new mode on the Comparison screen that shows one practice's current-PHO baseline alongside thePHO's offer, per stream, with a one-click PDF export formatted for sharing with practices.
-- **Cross-tab (joint) demographic input** — on the practice editor, flip the Demographic breakdown card to cross-tab mode to enter exact age × sex × ethnicity × deprivation counts (48 cells per practice). Marginal mode still works unchanged; the engine switches automatically when joint data is present.
-- **Edit practice** buttons on the register and in the workbench header jump straight to the editor, replacing the prior ⋯ menu-only path.
+- **Management Services funding** on the Network screen — the PHO-level, tiered per-capita stream from Te Whatu Ora s.8. Annual dollars, tier band, and per-person effective rate are shown with a full breakdown; the amount is folded into the network gross + retained totals. Includes a toggle for "Management Services Plan approved" (Tier 1 prerequisite). Does not affect individual practice figures.
 
-## Changes
+## Fixed
 
-- Default pass-through is now 90% (was 85%). Existing saved scenarios are unaffected.
-- Scenario comparison and Offer vs Current PHO are both reachable from the Comparison tab via the mode toggle in the top-right.
+- Release notes in the in-app update modal now render formatting (headings, bullets, bold) instead of raw markdown text.
+
+---
+
+If you're upgrading from **v0.3.2**, v0.4.0 also added:
+
+## Network view
+
+Portfolio-wide rollup across every practice, with a single network pass-through slider. Shows total enrolled, gross PHO revenue, retained $, and offered $ at thePHO level, plus a per-practice contribution table with variance against each practice's recorded baseline.
+
+## Offer vs Current PHO comparison
+
+A new mode on the Comparison screen showing one practice's current-PHO baseline alongside thePHO's offer, per stream. One-click PDF export formatted for sharing with practices.
+
+## Cross-tab demographic input
+
+On the practice editor, flip the Demographic breakdown card to cross-tab mode to enter exact age × sex × ethnicity × deprivation counts (48 cells per practice). Marginal mode still works unchanged; the engine picks the joint path automatically when cross-tab data is present.
+
+## Quality-of-life
+
+- Clearer **Edit practice** buttons on the register and in the workbench header.
+- Default pass-through raised from 85% to 90%.
 - PDF export uses jsPDF bundled offline — no internet required.

@@ -171,6 +171,59 @@
     { ageBand: '65+',   gender: 'M', depBand: 'dep9-10', ethnicity: 'maori-pacific', rate: 118.563636 },
   ];
 
+  // Management Services (PHO-level, tiered by total enrolment). Paid to the PHO; not passed to practices.
+  // Tier 1 additionally requires an approved Management Services Plan.
+  // Source: https://www.tewhatuora.govt.nz/for-health-providers/primary-care-sector/capitation-rates#8-management-services
+  const MGMT_RATES = {
+    tier1_first: 18.3348,       // first 20,000
+    tier1_second: 1.0572,       // 20,001–40,000
+    tier2_first: 13.0464,       // first 20,000
+    tier2_rest: 6.3444,         // 20,001–75,000
+    tier3_base: 609870,         // flat for first 75,000
+    tier3_perPerson: 7.1244,    // each enrolee above 75,000
+  };
+
+  function computeManagementServices(enrolled, hasApprovedPlan) {
+    enrolled = Math.max(0, Math.floor(enrolled || 0));
+    if (enrolled === 0) return { total: 0, tier: 0, blocked: false, breakdown: [] };
+
+    if (enrolled <= 40000) {
+      if (!hasApprovedPlan) {
+        return { total: 0, tier: 1, blocked: true, breakdown: [],
+          note: 'Tier 1 funding requires an approved Management Services Plan.' };
+      }
+      const a = Math.min(enrolled, 20000);
+      const b = Math.max(0, enrolled - 20000);
+      const breakdown = [{ label: 'First 20,000 enrolees', count: a, rate: MGMT_RATES.tier1_first, amount: a * MGMT_RATES.tier1_first }];
+      if (b > 0) breakdown.push({ label: `Next ${b.toLocaleString('en-NZ')} enrolees (20,001–40,000)`, count: b, rate: MGMT_RATES.tier1_second, amount: b * MGMT_RATES.tier1_second });
+      return { total: breakdown.reduce((s, x) => s + x.amount, 0), tier: 1, blocked: false, breakdown };
+    }
+    if (enrolled <= 75000) {
+      const a = 20000;
+      const b = enrolled - 20000;
+      const breakdown = [
+        { label: 'First 20,000 enrolees', count: a, rate: MGMT_RATES.tier2_first, amount: a * MGMT_RATES.tier2_first },
+        { label: `Next ${b.toLocaleString('en-NZ')} enrolees (20,001–75,000)`, count: b, rate: MGMT_RATES.tier2_rest, amount: b * MGMT_RATES.tier2_rest },
+      ];
+      return { total: breakdown.reduce((s, x) => s + x.amount, 0), tier: 2, blocked: false, breakdown };
+    }
+    const above = enrolled - 75000;
+    const breakdown = [
+      { label: 'Base — first 75,000 enrolees', count: 75000, rate: MGMT_RATES.tier3_base / 75000, amount: MGMT_RATES.tier3_base },
+      { label: `Over 75,000 (${above.toLocaleString('en-NZ')} enrolees)`, count: above, rate: MGMT_RATES.tier3_perPerson, amount: above * MGMT_RATES.tier3_perPerson },
+    ];
+    return { total: breakdown.reduce((s, x) => s + x.amount, 0), tier: 3, blocked: false, breakdown };
+  }
+
+  const MGMT_META = {
+    name: 'Management Services',
+    shortName: 'Management',
+    effective: '1 July 2025',
+    source: 'Te Whatu Ora Capitation Rates, s.8',
+    sourceUrl: 'https://www.tewhatuora.govt.nz/for-health-providers/primary-care-sector/capitation-rates#8-management-services',
+    notes: 'Per-capita rates paid to the PHO, tiered by total enrolment. Not passed through to practices. Tier 1 requires an approved Management Services Plan.',
+  };
+
   const RATES_META = {
     firstLevel: {
       name: 'First-Level Services', shortName: 'First-Level',
@@ -432,7 +485,9 @@
     AGE_BANDS,
     FIRST_LEVEL_RATES, CSC_TOPUP_RATES, HOP_RATES, SIA_RATES, CAREPLUS_RATES,
     RATES_META,
+    MGMT_META, MGMT_RATES,
     ffCompute: compute,
+    ffComputeManagement: computeManagementServices,
     SEED_PRACTICES, SEED_SCENARIOS, SEED_TEMPLATES,
     fmtCurrency, fmtCurrencySigned, fmtNumber, fmtPct, fmtDate,
   });

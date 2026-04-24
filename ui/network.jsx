@@ -7,7 +7,12 @@ function Network({ state, onBack, onOpenWorkbench, pushToast }) {
     try { return JSON.parse(localStorage.getItem('ffcalc:v1:network-ret')) || { firstLevel: 10, hop: 10, sia: 10, careplus: 10 }; }
     catch { return { firstLevel: 10, hop: 10, sia: 10, careplus: 10 }; }
   });
+  const [mgmtPlan, setMgmtPlan] = React.useState(() => {
+    try { const v = localStorage.getItem('ffcalc:v1:network-mgmt-plan'); return v == null ? true : v === '1'; }
+    catch { return true; }
+  });
   React.useEffect(() => { try { localStorage.setItem('ffcalc:v1:network-ret', JSON.stringify(retention)); } catch {} }, [retention]);
+  React.useEffect(() => { try { localStorage.setItem('ffcalc:v1:network-mgmt-plan', mgmtPlan ? '1' : '0'); } catch {} }, [mgmtPlan]);
 
   const practiceRows = React.useMemo(() => state.practices.map(p => {
     const r = window.ffCompute(p);
@@ -43,15 +48,20 @@ function Network({ state, onBack, onOpenWorkbench, pushToast }) {
         baselineKnownPractices++;
       }
     }
-    const grossTotal = Object.values(gross).reduce((s, v) => s + v, 0);
-    const retainedTotal = Object.values(retainedByStream).reduce((s, v) => s + v, 0);
+    const streamGrossTotal = Object.values(gross).reduce((s, v) => s + v, 0);
+    const streamRetainedTotal = Object.values(retainedByStream).reduce((s, v) => s + v, 0);
     const offerTotal = Object.values(offerByStream).reduce((s, v) => s + v, 0);
+    const mgmt = window.ffComputeManagement(patients, mgmtPlan);
+    const grossTotal = streamGrossTotal + mgmt.total;
+    const retainedTotal = streamRetainedTotal + mgmt.total; // management services is PHO-retained in full
     return {
       patients, gross, retainedByStream, offerByStream,
+      streamGrossTotal, streamRetainedTotal,
       grossTotal, retainedTotal, offerTotal,
+      mgmt,
       baselineKnownTotal, baselineKnownPractices,
     };
-  }, [practiceRows]);
+  }, [practiceRows, mgmtPlan]);
 
   const setRet = (stream, v) => setRetention(r => ({ ...r, [stream]: v }));
   const setAllRet = (v) => setRetention({ firstLevel: v, hop: v, sia: v, careplus: v });
@@ -87,7 +97,9 @@ function Network({ state, onBack, onOpenWorkbench, pushToast }) {
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="card-body" style={{ padding: 20, display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 24 }}>
           <Stat label="Enrolled" value={window.fmtNumber(network.patients)} sub={`${state.practices.length} practices`}/>
-          <Stat label="Gross PHO revenue (yr)" value={window.fmtCurrency(network.grossTotal)} sub={`${window.fmtCurrency(network.grossTotal / 12, { compact: true })}/mo`}/>
+          <Stat label="Gross PHO revenue (yr)"
+            value={window.fmtCurrency(network.grossTotal)}
+            sub={`includes ${window.fmtCurrency(network.mgmt.total, { compact: true })} management services`}/>
           <Stat label="PHO retains" value={window.fmtCurrency(network.retainedTotal)} sub={`${((network.retainedTotal / network.grossTotal) * 100 || 0).toFixed(1)}% weighted`}/>
           <Stat label="Offer to practices" value={window.fmtCurrency(network.offerTotal)} sub={`${window.fmtCurrency(network.offerTotal / 12, { compact: true })}/mo`} accent/>
         </div>
@@ -95,11 +107,14 @@ function Network({ state, onBack, onOpenWorkbench, pushToast }) {
           <div style={{ fontSize: 11.5, color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 10 }}>
             Network revenue composition
           </div>
-          <StackedBar items={STREAM_KEYS.map(k => ({
-            label: STREAM_LABELS[k], value: network.gross[k], color: STREAM_COLORS[k],
-          }))} height={10} showLabels/>
+          <StackedBar items={[
+            ...STREAM_KEYS.map(k => ({ label: STREAM_LABELS[k], value: network.gross[k], color: STREAM_COLORS[k] })),
+            { label: 'Management', value: network.mgmt.total, color: 'var(--navy)' },
+          ]} height={10} showLabels/>
         </div>
       </div>
+
+      <ManagementServicesCard mgmt={network.mgmt} patients={network.patients} hasPlan={mgmtPlan} setHasPlan={setMgmtPlan}/>
 
       <div style={{ display: 'grid', gridTemplateColumns: '360px 1fr', gap: 16 }}>
         <div className="card" style={{ alignSelf: 'start', position: 'sticky', top: 80 }}>
@@ -131,6 +146,21 @@ function Network({ state, onBack, onOpenWorkbench, pushToast }) {
                     </td>
                   </tr>
                 ))}
+                <tr>
+                  <td style={{ padding: '6px 0', border: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: 2, background: 'var(--navy)' }}/>
+                    <span style={{ color: 'var(--text-muted)' }}>Management</span>
+                  </td>
+                  <td className="num" style={{ padding: '6px 0', border: 'none', textAlign: 'right', fontWeight: 500 }}>
+                    {window.fmtCurrency(network.mgmt.total, { compact: true })}
+                  </td>
+                </tr>
+                <tr style={{ borderTop: '1px solid var(--border)' }}>
+                  <td style={{ padding: '8px 0 0', border: 'none', fontWeight: 600, color: 'var(--text-strong)' }}>Total retained</td>
+                  <td className="num" style={{ padding: '8px 0 0', border: 'none', textAlign: 'right', fontWeight: 700, color: 'var(--accent)' }}>
+                    {window.fmtCurrency(network.retainedTotal, { compact: true })}
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -190,11 +220,11 @@ function Network({ state, onBack, onOpenWorkbench, pushToast }) {
             </tbody>
             <tfoot>
               <tr style={{ background: 'var(--pink-soft)' }}>
-                <td style={{ fontWeight: 700, color: 'var(--accent)' }}>Network total</td>
+                <td style={{ fontWeight: 700, color: 'var(--accent)' }}>Practice totals</td>
                 <td className="num" style={{ fontWeight: 600 }}>{window.fmtNumber(network.patients)}</td>
-                <td className="num" style={{ fontWeight: 600 }}>{window.fmtCurrency(network.grossTotal, { compact: true })}</td>
+                <td className="num" style={{ fontWeight: 600 }}>{window.fmtCurrency(network.streamGrossTotal, { compact: true })}</td>
                 <td className="num" style={{ fontWeight: 700, color: 'var(--accent)' }}>{window.fmtCurrency(network.offerTotal, { compact: true })}</td>
-                <td className="num" style={{ fontWeight: 600 }}>{window.fmtCurrency(network.retainedTotal, { compact: true })}</td>
+                <td className="num" style={{ fontWeight: 600 }}>{window.fmtCurrency(network.streamRetainedTotal, { compact: true })}</td>
                 <td className="num" style={{ fontWeight: 600 }}>
                   {network.baselineKnownPractices > 0
                     ? window.fmtCurrency(network.baselineKnownTotal, { compact: true })
@@ -217,6 +247,84 @@ function Network({ state, onBack, onOpenWorkbench, pushToast }) {
       <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-dim)', fontSize: 12 }}>
         <ICONS.Info size={13}/>
         Applies one network-wide pass-through to every practice. To model per-practice differentiation, save practice-level scenarios and use the Comparison screen.
+      </div>
+    </div>
+  );
+}
+
+function ManagementServicesCard({ mgmt, patients, hasPlan, setHasPlan }) {
+  const meta = window.MGMT_META;
+  const tierLabels = { 0: '—', 1: 'Tier 1 (≤40,000)', 2: 'Tier 2 (40,001–75,000)', 3: 'Tier 3 (≥75,001)' };
+  const perPerson = patients > 0 ? mgmt.total / patients : 0;
+  return (
+    <div className="card" style={{ marginBottom: 16 }}>
+      <div className="card-head" style={{ padding: '12px 18px', alignItems: 'center' }}>
+        <h3>{meta.name}</h3>
+        <span className="sub" style={{ marginLeft: 8, color: 'var(--text-dim)' }}>PHO-level · not passed to practices</span>
+        <span style={{ flex: 1 }}/>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: 'var(--text-muted)', cursor: 'pointer' }}>
+          <input type="checkbox" checked={hasPlan} onChange={e => setHasPlan(e.target.checked)}/>
+          Management Services Plan approved
+        </label>
+      </div>
+      <div className="card-body" style={{ padding: '14px 18px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 24, marginBottom: 14 }}>
+          <Stat label="Annual funding" value={window.fmtCurrency(mgmt.total)} sub={`${window.fmtCurrency(mgmt.total / 12, { compact: true })}/mo`} accent/>
+          <Stat label="Tier" value={tierLabels[mgmt.tier] || '—'} sub={patients ? `${window.fmtNumber(patients)} enrolled network-wide` : 'no practices'}/>
+          <Stat label="Effective per enrolee" value={window.fmtCurrency(perPerson, { decimals: 2 })} sub={`eff. ${meta.effective}`}/>
+        </div>
+
+        {mgmt.blocked && (
+          <div style={{
+            padding: '10px 12px', marginBottom: 12,
+            background: 'color-mix(in oklab, var(--amber) 14%, var(--surface))',
+            border: '1px solid color-mix(in oklab, var(--amber) 35%, var(--border))',
+            borderRadius: 'var(--r)', fontSize: 12.5, color: 'var(--amber-strong, #8a5a00)',
+            display: 'flex', alignItems: 'center', gap: 8,
+          }}>
+            <window.ICONS.Warn size={13}/>
+            {mgmt.note || 'Tier 1 funding requires an approved Management Services Plan. Tick the box above once the plan is approved.'}
+          </div>
+        )}
+
+        {mgmt.breakdown.length > 0 && (
+          <table className="table" style={{ fontSize: 12.5 }}>
+            <thead>
+              <tr>
+                <th>Band</th>
+                <th className="num">Enrolees</th>
+                <th className="num">Rate / person</th>
+                <th className="num">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {mgmt.breakdown.map((b, i) => (
+                <tr key={i}>
+                  <td style={{ color: 'var(--text-muted)' }}>{b.label}</td>
+                  <td className="num">{window.fmtNumber(b.count)}</td>
+                  <td className="num" style={{ color: 'var(--text-muted)' }}>{window.fmtCurrency(b.rate, { decimals: 4 })}</td>
+                  <td className="num" style={{ fontWeight: 500 }}>{window.fmtCurrency(b.amount)}</td>
+                </tr>
+              ))}
+              <tr style={{ background: 'var(--pink-soft)' }}>
+                <td style={{ fontWeight: 700, color: 'var(--accent)' }}>Total</td>
+                <td className="num" style={{ fontWeight: 600 }}>{window.fmtNumber(patients)}</td>
+                <td></td>
+                <td className="num" style={{ fontWeight: 700, color: 'var(--accent)' }}>{window.fmtCurrency(mgmt.total)}</td>
+              </tr>
+            </tbody>
+          </table>
+        )}
+
+        <div style={{ marginTop: 10, fontSize: 11.5, color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <window.ICONS.Info size={12}/>
+          {meta.notes}
+          {' '}
+          <a href={meta.sourceUrl} target="_blank" rel="noopener noreferrer"
+            style={{ color: 'var(--accent)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 3, marginLeft: 4 }}>
+            Source <window.ICONS.External size={11}/>
+          </a>
+        </div>
       </div>
     </div>
   );

@@ -2,6 +2,51 @@
 
 const { ICONS, Button } = window;
 
+// Tiny safe markdown renderer for release notes.
+// Handles: # / ## / ### headings, - / * bullets, **bold**, *italic*, `code`, paragraphs.
+// No raw HTML; React escapes all text — XSS-safe.
+function renderInline(text, keyPrefix = '') {
+  const parts = [];
+  const re = /(\*\*[^*]+\*\*|`[^`]+`|\*[^*\s][^*]*\*)/g;
+  let last = 0, m, k = 0;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) parts.push(text.slice(last, m.index));
+    const t = m[0];
+    if (t.startsWith('**')) parts.push(<b key={keyPrefix + (k++)}>{t.slice(2, -2)}</b>);
+    else if (t.startsWith('`')) parts.push(<code key={keyPrefix + (k++)} style={{ background: 'var(--surface-2)', padding: '1px 4px', borderRadius: 3, fontSize: '0.92em' }}>{t.slice(1, -1)}</code>);
+    else parts.push(<em key={keyPrefix + (k++)}>{t.slice(1, -1)}</em>);
+    last = m.index + t.length;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts;
+}
+
+function renderMarkdown(body) {
+  if (!body) return null;
+  const lines = body.split(/\r?\n/);
+  const out = [];
+  let list = null;
+  let key = 0;
+  const flush = () => { if (list) { out.push(<ul key={'u' + (key++)} style={{ margin: '4px 0 10px', paddingLeft: 22 }}>{list}</ul>); list = null; } };
+  for (const raw of lines) {
+    const line = raw.trimEnd();
+    if (!line.trim()) { flush(); continue; }
+    let m;
+    if ((m = line.match(/^### (.+)/))) { flush(); out.push(<div key={'h3-' + (key++)} style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-strong)', margin: '10px 0 4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{renderInline(m[1], 'h3-' + key + '-')}</div>); continue; }
+    if ((m = line.match(/^## (.+)/))) { flush(); out.push(<div key={'h2-' + (key++)} style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-strong)', margin: '14px 0 6px' }}>{renderInline(m[1], 'h2-' + key + '-')}</div>); continue; }
+    if ((m = line.match(/^# (.+)/))) { flush(); out.push(<div key={'h1-' + (key++)} style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-strong)', margin: '14px 0 8px' }}>{renderInline(m[1], 'h1-' + key + '-')}</div>); continue; }
+    if ((m = line.match(/^[-*] (.+)/))) {
+      if (!list) list = [];
+      list.push(<li key={'li-' + list.length} style={{ marginBottom: 3, lineHeight: 1.45 }}>{renderInline(m[1], 'li-' + list.length + '-')}</li>);
+      continue;
+    }
+    flush();
+    out.push(<p key={'p-' + (key++)} style={{ margin: '4px 0 8px', lineHeight: 1.5 }}>{renderInline(line, 'p-' + key + '-')}</p>);
+  }
+  flush();
+  return out;
+}
+
 function App() {
   const [state, setState] = React.useState(() => window.makeInitialState());
   const [route, setRoute] = React.useState(() => {
@@ -186,7 +231,7 @@ function App() {
           <div style={{ fontSize: 11, color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: 6 }}>
             <ICONS.Drop size={12}/> Local-only · IndexedDB
           </div>
-          <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>v0.4.0 · Rates eff. 1 Jul 2025</div>
+          <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>v0.4.1 · Rates eff. 1 Jul 2025</div>
           {updateInfo ? (
             <button
               onClick={() => setUpdateModalOpen(true)}
@@ -253,11 +298,11 @@ function App() {
                 {`You're on v${updateInfo.currentVersion}. This will download, install, and relaunch the app.`}
               </div>
               {updateInfo.body && (
-                <pre style={{
+                <div style={{
                   fontSize: 12.5, color: 'var(--text)', background: 'var(--surface-2)',
-                  padding: 12, borderRadius: 'var(--r)', maxHeight: 220, overflow: 'auto',
-                  whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0,
-                }}>{updateInfo.body}</pre>
+                  padding: '12px 14px', borderRadius: 'var(--r)', maxHeight: 280, overflow: 'auto',
+                  margin: 0,
+                }}>{renderMarkdown(updateInfo.body)}</div>
               )}
               {updateStatus === 'downloading' && (
                 <div style={{ marginTop: 14 }}>
