@@ -26,7 +26,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["nsis", "appimage"],
     "category": "Productivity",
     "shortDescription": "thePHO Bulk Funding Calculator",
     "longDescription": "Calculate total Te Whatu Ora revenue per funding stream for any demographic roster, and model PHO pass-through pricing.",
