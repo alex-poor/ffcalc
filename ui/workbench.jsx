@@ -2,9 +2,9 @@
 
 const { Button, Modal, PromptModal, ConfirmModal, TypeChip, Money, VarianceChip, StackedBar, Sparkline, STREAM_COLORS, STREAM_KEYS, STREAM_LABELS, ICONS, AGE_BANDS } = window;
 
-function Workbench({ practiceId, state, setState, onBack, onCompare, onEditPractice, pushToast, pushHistory, layoutVariant, density }) {
+function Workbench({ practiceId, state, setState, onBack, onCompare, onEditPractice, pushToast, pushHistory, layoutVariant, density, flsTopSlice }) {
   const practice = state.practices.find(p => p.id === practiceId);
-  const [retention, setRetention] = React.useState({ firstLevel: 10, hop: 10, sia: 10, careplus: 10 });
+  const [retention, setRetention] = React.useState({ firstLevel: 0, hop: 10, sia: 10, careplus: 10 });
   const [expanded, setExpanded] = React.useState({});
   const [saveOpen, setSaveOpen] = React.useState(false);
   const [scenarioName, setScenarioName] = React.useState('');
@@ -27,11 +27,14 @@ function Workbench({ practiceId, state, setState, onBack, onCompare, onEditPract
 
   const result = React.useMemo(() => window.ffCompute(practice), [practice]);
 
+  // First-Level top-slice locked off by default (full pass-through). Tweaks → Advanced enables it.
+  const effRetention = { ...retention, firstLevel: flsTopSlice ? retention.firstLevel : 0 };
+
   const streamRetained = {
-    firstLevel: result.streams.firstLevel.total * retention.firstLevel / 100,
-    hop: result.streams.hop.total * retention.hop / 100,
-    sia: result.streams.sia.total * retention.sia / 100,
-    careplus: result.streams.careplus.total * retention.careplus / 100,
+    firstLevel: result.streams.firstLevel.total * effRetention.firstLevel / 100,
+    hop: result.streams.hop.total * effRetention.hop / 100,
+    sia: result.streams.sia.total * effRetention.sia / 100,
+    careplus: result.streams.careplus.total * effRetention.careplus / 100,
   };
   const streamOffer = {
     firstLevel: result.streams.firstLevel.total - streamRetained.firstLevel,
@@ -47,10 +50,16 @@ function Workbench({ practiceId, state, setState, onBack, onCompare, onEditPract
   const variance = baselineTotal != null ? totalOffer - baselineTotal : null;
 
   const setRet = (stream, v) => setRetention(r => ({ ...r, [stream]: v }));
-  const setAllRet = (v) => setRetention({ firstLevel: v, hop: v, sia: v, careplus: v });
+  // "Apply to all" only touches streams the user can actually edit — leave FL at 0 when locked.
+  const setAllRet = (v) => setRetention(r => flsTopSlice
+    ? { firstLevel: v, hop: v, sia: v, careplus: v }
+    : { firstLevel: r.firstLevel, hop: v, sia: v, careplus: v });
   const resetRet = () => { setRetention({ firstLevel: 0, hop: 0, sia: 0, careplus: 0 }); pushToast({ msg: 'Pass-through reset to 100%' }); };
 
-  const masterRet = Math.round((retention.firstLevel + retention.hop + retention.sia + retention.careplus) / 4);
+  // Master slider average reflects only the editable streams.
+  const masterRet = flsTopSlice
+    ? Math.round((retention.firstLevel + retention.hop + retention.sia + retention.careplus) / 4)
+    : Math.round((retention.hop + retention.sia + retention.careplus) / 3);
 
   const updatePractice = (patch) => {
     pushHistory();
@@ -200,6 +209,7 @@ function Workbench({ practiceId, state, setState, onBack, onCompare, onEditPract
       practice={practice} result={result}
       retention={retention} setRet={setRet} setAllRet={setAllRet} resetRet={resetRet}
       masterRet={masterRet} updatePractice={updatePractice} updatePracticeAge={updatePracticeAge}
+      flsTopSlice={flsTopSlice}
       scenarios={scenarios} selectedScenarioId={selectedScenarioId} setSelectedScenarioId={(id) => {
         setSelectedScenarioId(id);
         const sc = scenarios.find(s => s.id === id);
@@ -216,7 +226,7 @@ function Workbench({ practiceId, state, setState, onBack, onCompare, onEditPract
   const rightPane = (
     <ResultsPane
       practice={practice} result={result}
-      retention={retention} streamRetained={streamRetained} streamOffer={streamOffer}
+      retention={effRetention} streamRetained={streamRetained} streamOffer={streamOffer}
       totalRetained={totalRetained} totalOffer={totalOffer}
       variance={variance} baselineTotal={baselineTotal}
       expanded={expanded} setExpanded={setExpanded}
@@ -317,7 +327,7 @@ function Workbench({ practiceId, state, setState, onBack, onCompare, onEditPract
   );
 }
 
-function InputsPane({ practice, result, retention, setRet, setAllRet, resetRet, masterRet, updatePractice, updatePracticeAge, scenarios, selectedScenarioId, setSelectedScenarioId, promptRenameScenario, promptDeleteScenario, templates, applyTemplate, saveCurrentAsTemplate, renameTemplate, deleteTemplate, state }) {
+function InputsPane({ practice, result, retention, setRet, setAllRet, resetRet, masterRet, updatePractice, updatePracticeAge, flsTopSlice, scenarios, selectedScenarioId, setSelectedScenarioId, promptRenameScenario, promptDeleteScenario, templates, applyTemplate, saveCurrentAsTemplate, renameTemplate, deleteTemplate, state }) {
   const selected = scenarios.find(s => s.id === selectedScenarioId);
   const onRename = () => { if (selected) promptRenameScenario(selected); };
   const onDelete = () => { if (selected) promptDeleteScenario(selected); };
@@ -391,7 +401,9 @@ function InputsPane({ practice, result, retention, setRet, setAllRet, resetRet, 
         </div>
         <div className="card-body" style={{ padding: '8px 16px 16px' }}>
           <SliderRow label="Apply to all" retention={masterRet} onChange={setAllRet} master/>
-          <SliderRow label="First-Level" retention={retention.firstLevel} onChange={(v) => setRet('firstLevel', v)} color={STREAM_COLORS.firstLevel}/>
+          {flsTopSlice
+            ? <SliderRow label="First-Level" retention={retention.firstLevel} onChange={(v) => setRet('firstLevel', v)} color={STREAM_COLORS.firstLevel}/>
+            : <FirstLevelLockedRow/>}
           <SliderRow label="HOP" retention={retention.hop} onChange={(v) => setRet('hop', v)} color={STREAM_COLORS.hop}/>
           <SliderRow label="SIA" retention={retention.sia} onChange={(v) => setRet('sia', v)} color={STREAM_COLORS.sia}/>
           <SliderRow label="CarePlus" retention={retention.careplus} onChange={(v) => setRet('careplus', v)} color={STREAM_COLORS.careplus}/>
@@ -401,6 +413,24 @@ function InputsPane({ practice, result, retention, setRet, setAllRet, resetRet, 
       <AgeBandCard practice={practice} result={result} updatePracticeAge={updatePracticeAge}/>
 
       <MarginalsCard practice={practice} result={result} updatePractice={updatePractice}/>
+    </div>
+  );
+}
+
+function FirstLevelLockedRow() {
+  return (
+    <div className="slider-row" style={{ gridTemplateColumns: '96px 1fr 92px', opacity: 0.78 }}>
+      <div className="label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ width: 8, height: 8, borderRadius: 2, background: STREAM_COLORS.firstLevel }}/>
+        First-Level
+      </div>
+      <div style={{ fontSize: 11.5, color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: 6 }}>
+        Locked at 100% pass-through
+        <span title="Enable First-Level top-slice in Tweaks → Advanced to edit." style={{ cursor: 'help' }}>
+          <ICONS.Info size={11}/>
+        </span>
+      </div>
+      <div className="value">100% <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: 11 }}>pass</span></div>
     </div>
   );
 }

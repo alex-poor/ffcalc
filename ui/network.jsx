@@ -2,10 +2,11 @@
 
 const { Button, ICONS, STREAM_KEYS, STREAM_LABELS, STREAM_COLORS, Money, StackedBar, VarianceChip } = window;
 
-function Network({ state, onBack, onOpenWorkbench, pushToast }) {
+function Network({ state, onBack, onOpenWorkbench, pushToast, flsTopSlice }) {
+  const DEFAULT_NETWORK_RET = { firstLevel: 0, hop: 10, sia: 10, careplus: 10 };
   const [retention, setRetention] = React.useState(() => {
-    try { return JSON.parse(localStorage.getItem('ffcalc:v1:network-ret')) || { firstLevel: 10, hop: 10, sia: 10, careplus: 10 }; }
-    catch { return { firstLevel: 10, hop: 10, sia: 10, careplus: 10 }; }
+    try { return { ...DEFAULT_NETWORK_RET, ...(JSON.parse(localStorage.getItem('ffcalc:v1:network-ret')) || {}) }; }
+    catch { return DEFAULT_NETWORK_RET; }
   });
   const [mgmtPlan, setMgmtPlan] = React.useState(() => {
     try { const v = localStorage.getItem('ffcalc:v1:network-mgmt-plan'); return v == null ? true : v === '1'; }
@@ -14,11 +15,14 @@ function Network({ state, onBack, onOpenWorkbench, pushToast }) {
   React.useEffect(() => { try { localStorage.setItem('ffcalc:v1:network-ret', JSON.stringify(retention)); } catch {} }, [retention]);
   React.useEffect(() => { try { localStorage.setItem('ffcalc:v1:network-mgmt-plan', mgmtPlan ? '1' : '0'); } catch {} }, [mgmtPlan]);
 
+  // First-Level top-slice locked off by default — full pass-through unless enabled in Tweaks → Advanced.
+  const effRetention = { ...retention, firstLevel: flsTopSlice ? retention.firstLevel : 0 };
+
   const practiceRows = React.useMemo(() => state.practices.map(p => {
     const r = window.ffCompute(p);
     const retained = {}; const offers = {};
     STREAM_KEYS.forEach(k => {
-      retained[k] = r.streams[k].total * retention[k] / 100;
+      retained[k] = r.streams[k].total * effRetention[k] / 100;
       offers[k] = r.streams[k].total - retained[k];
     });
     const totalOffer = Object.values(offers).reduce((s, v) => s + v, 0);
@@ -27,7 +31,7 @@ function Network({ state, onBack, onOpenWorkbench, pushToast }) {
       ? STREAM_KEYS.reduce((s, k) => s + (p.baseline[k] || 0), 0)
       : null;
     return { practice: p, result: r, offers, retained, totalOffer, totalRet, baselineTotal };
-  }), [state.practices, retention]);
+  }), [state.practices, retention, flsTopSlice]);
 
   const network = React.useMemo(() => {
     const gross = { firstLevel: 0, hop: 0, sia: 0, careplus: 0 };
@@ -64,8 +68,12 @@ function Network({ state, onBack, onOpenWorkbench, pushToast }) {
   }, [practiceRows, mgmtPlan]);
 
   const setRet = (stream, v) => setRetention(r => ({ ...r, [stream]: v }));
-  const setAllRet = (v) => setRetention({ firstLevel: v, hop: v, sia: v, careplus: v });
-  const masterRet = Math.round((retention.firstLevel + retention.hop + retention.sia + retention.careplus) / 4);
+  const setAllRet = (v) => setRetention(r => flsTopSlice
+    ? { firstLevel: v, hop: v, sia: v, careplus: v }
+    : { firstLevel: r.firstLevel, hop: v, sia: v, careplus: v });
+  const masterRet = flsTopSlice
+    ? Math.round((retention.firstLevel + retention.hop + retention.sia + retention.careplus) / 4)
+    : Math.round((retention.hop + retention.sia + retention.careplus) / 3);
 
   if (state.practices.length === 0) {
     return (
@@ -124,7 +132,9 @@ function Network({ state, onBack, onOpenWorkbench, pushToast }) {
           </div>
           <div className="card-body" style={{ padding: '8px 16px 16px' }}>
             <SliderRow label="Apply to all" retention={masterRet} onChange={setAllRet} master/>
-            <SliderRow label="First-Level" retention={retention.firstLevel} onChange={(v) => setRet('firstLevel', v)} color={STREAM_COLORS.firstLevel}/>
+            {flsTopSlice
+              ? <SliderRow label="First-Level" retention={retention.firstLevel} onChange={(v) => setRet('firstLevel', v)} color={STREAM_COLORS.firstLevel}/>
+              : <FirstLevelLockedRow/>}
             <SliderRow label="HOP" retention={retention.hop} onChange={(v) => setRet('hop', v)} color={STREAM_COLORS.hop}/>
             <SliderRow label="SIA" retention={retention.sia} onChange={(v) => setRet('sia', v)} color={STREAM_COLORS.sia}/>
             <SliderRow label="CarePlus" retention={retention.careplus} onChange={(v) => setRet('careplus', v)} color={STREAM_COLORS.careplus}/>
@@ -339,6 +349,24 @@ function Stat({ label, value, sub, accent }) {
         color: accent ? 'var(--accent)' : 'var(--text-strong)',
       }}>{value}</div>
       {sub && <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 2 }}>{sub}</div>}
+    </div>
+  );
+}
+
+function FirstLevelLockedRow() {
+  return (
+    <div className="slider-row" style={{ gridTemplateColumns: '96px 1fr 92px', opacity: 0.78 }}>
+      <div className="label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ width: 8, height: 8, borderRadius: 2, background: STREAM_COLORS.firstLevel }}/>
+        First-Level
+      </div>
+      <div style={{ fontSize: 11.5, color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: 6 }}>
+        Locked at 100% pass-through
+        <span title="Enable First-Level top-slice in Tweaks → Advanced to edit." style={{ cursor: 'help' }}>
+          <ICONS.Info size={11}/>
+        </span>
+      </div>
+      <div className="value">100% <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: 11 }}>pass</span></div>
     </div>
   );
 }

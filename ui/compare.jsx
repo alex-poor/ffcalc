@@ -1,7 +1,7 @@
 // compare.jsx — Screen 4: Comparison View
 const { Button, ICONS, STREAM_KEYS, STREAM_LABELS, STREAM_COLORS, Money, VarianceChip } = window;
 
-function Comparison({ state, setState, onOpenWorkbench, onBack, pushToast }) {
+function Comparison({ state, setState, onOpenWorkbench, onBack, pushToast, flsTopSlice }) {
   const [mode, setMode] = React.useState(() => {
     try { return localStorage.getItem('ffcalc:v1:cmp-mode') || 'scenarios'; } catch { return 'scenarios'; }
   });
@@ -26,13 +26,13 @@ function Comparison({ state, setState, onOpenWorkbench, onBack, pushToast }) {
       </div>
 
       {mode === 'scenarios'
-        ? <ScenarioCompare state={state} setState={setState} onOpenWorkbench={onOpenWorkbench} pushToast={pushToast}/>
-        : <VsCurrentCompare state={state} setState={setState} onOpenWorkbench={onOpenWorkbench} pushToast={pushToast}/>}
+        ? <ScenarioCompare state={state} setState={setState} onOpenWorkbench={onOpenWorkbench} pushToast={pushToast} flsTopSlice={flsTopSlice}/>
+        : <VsCurrentCompare state={state} setState={setState} onOpenWorkbench={onOpenWorkbench} pushToast={pushToast} flsTopSlice={flsTopSlice}/>}
     </div>
   );
 }
 
-function ScenarioCompare({ state, setState, onOpenWorkbench, pushToast }) {
+function ScenarioCompare({ state, setState, onOpenWorkbench, pushToast, flsTopSlice }) {
   const [picker, setPicker] = React.useState(false);
   const ids = state.compareIds.slice(0, 4);
   const scenarios = ids.map(id => state.scenarios.find(s => s.id === id)).filter(Boolean);
@@ -41,14 +41,16 @@ function ScenarioCompare({ state, setState, onOpenWorkbench, pushToast }) {
     const p = state.practices.find(x => x.id === sc.practiceId);
     if (!p) return null;
     const r = window.ffCompute(p);
+    // Honour the FL lock — if top-slice is off, FL retention is 0 regardless of what the scenario stored.
+    const eff = { ...sc.retention, firstLevel: flsTopSlice ? sc.retention.firstLevel : 0 };
     const offers = {}; const retained = {};
     STREAM_KEYS.forEach(k => {
-      retained[k] = r.streams[k].total * sc.retention[k] / 100;
+      retained[k] = r.streams[k].total * eff[k] / 100;
       offers[k] = r.streams[k].total - retained[k];
     });
     const totalOffer = Object.values(offers).reduce((s, v) => s + v, 0);
     const totalRet = Object.values(retained).reduce((s, v) => s + v, 0);
-    return { scenario: sc, practice: p, result: r, offers, retained, totalOffer, totalRet };
+    return { scenario: sc, practice: p, result: r, offers, retained, totalOffer, totalRet, eff };
   }).filter(Boolean);
 
   const remove = (id) => setState(s => ({ ...s, compareIds: s.compareIds.filter(x => x !== id) }));
@@ -124,7 +126,7 @@ function ScenarioCompare({ state, setState, onOpenWorkbench, pushToast }) {
                 <tr key={k}>
                   <td style={{ color: 'var(--text-muted)' }}>{STREAM_LABELS[k]}</td>
                   {rows.map(r => (
-                    <td key={r.scenario.id} className="num">{100 - r.scenario.retention[k]}%</td>
+                    <td key={r.scenario.id} className="num">{100 - r.eff[k]}%</td>
                   ))}
                 </tr>
               ))}
@@ -211,14 +213,17 @@ function ScenarioCompare({ state, setState, onOpenWorkbench, pushToast }) {
   );
 }
 
-// Default retention used if user hasn't saved a scenario for this practice yet.
-const DEFAULT_RETENTION = { firstLevel: 10, hop: 10, sia: 10, careplus: 10 };
+// Default retention used if user hasn't picked a scenario:
+//   90% pass-through on flexible streams; First-Level always 100% pass unless
+//   top-slice is enabled (Tweaks → Advanced).
+const DEFAULT_RETENTION = { firstLevel: 0, hop: 10, sia: 10, careplus: 10 };
 
-function VsCurrentCompare({ state, setState, onOpenWorkbench, pushToast }) {
+function VsCurrentCompare({ state, setState, onOpenWorkbench, pushToast, flsTopSlice }) {
   const [practiceId, setPracticeId] = React.useState(() => {
     try { return localStorage.getItem('ffcalc:v1:cmp-vs-pid') || state.practices[0]?.id || ''; }
     catch { return state.practices[0]?.id || ''; }
   });
+  // Default to no scenario (uses DEFAULT_RETENTION). User can still pick one.
   const [scenarioId, setScenarioId] = React.useState(null);
 
   React.useEffect(() => { try { localStorage.setItem('ffcalc:v1:cmp-vs-pid', practiceId || ''); } catch {} }, [practiceId]);
@@ -226,14 +231,8 @@ function VsCurrentCompare({ state, setState, onOpenWorkbench, pushToast }) {
   const practice = state.practices.find(p => p.id === practiceId);
   const practiceScenarios = practice ? state.scenarios.filter(s => s.practiceId === practice.id).sort((a, b) => b.created - a.created) : [];
 
-  // Pick a sensible default scenario on practice change
-  React.useEffect(() => {
-    if (practiceScenarios.length && !practiceScenarios.find(s => s.id === scenarioId)) {
-      setScenarioId(practiceScenarios[0].id);
-    } else if (!practiceScenarios.length) {
-      setScenarioId(null);
-    }
-  }, [practiceId]); // eslint-disable-line
+  // Reset scenario selection when switching practices (back to "default").
+  React.useEffect(() => { setScenarioId(null); }, [practiceId]);
 
   if (state.practices.length === 0) {
     return <div className="card"><div className="card-body" style={{ textAlign: 'center', padding: 60, color: 'var(--text-muted)' }}>
@@ -247,7 +246,9 @@ function VsCurrentCompare({ state, setState, onOpenWorkbench, pushToast }) {
     </div></div>;
   }
 
-  const retention = (practiceScenarios.find(s => s.id === scenarioId)?.retention) || DEFAULT_RETENTION;
+  const rawRetention = (practiceScenarios.find(s => s.id === scenarioId)?.retention) || DEFAULT_RETENTION;
+  // Honour the FL lock when top-slice is off.
+  const retention = { ...rawRetention, firstLevel: flsTopSlice ? rawRetention.firstLevel : 0 };
   const result = window.ffCompute(practice);
   const offers = {}; const retained = {};
   STREAM_KEYS.forEach(k => {
@@ -277,7 +278,7 @@ function VsCurrentCompare({ state, setState, onOpenWorkbench, pushToast }) {
           <div className="field" style={{ marginBottom: 0 }}>
             <label>Offer scenario</label>
             <select className="input" value={scenarioId || ''} onChange={e => setScenarioId(e.target.value || null)}>
-              <option value="">— default (90% flat pass-through) —</option>
+              <option value="">— default ({flsTopSlice ? '90% all streams' : '100% First-Level, 90% flexible'}) —</option>
               {practiceScenarios.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
@@ -432,7 +433,7 @@ function buildVsCurrentPDF({ practice, result, retention, offers, retained, base
 
   autoTable(doc, {
     startY: y,
-    head: [['Stream', 'Current PHO ($/yr)', 'thePHO offer ($/yr)', 'Difference', 'Pass-through', 'PHO retains']],
+    head: [['Stream', 'Current PHO\n($/yr)', 'thePHO offer\n($/yr)', 'Difference', 'Pass %', 'PHO retains\n($/yr)']],
     body: rows,
     foot: [[
       'Total',
@@ -442,16 +443,20 @@ function buildVsCurrentPDF({ practice, result, retention, offers, retained, base
       Math.round((totalOffer / result.grandTotal) * 100) + '%',
       fmtPdfMoney(result.grandTotal - totalOffer),
     ]],
-    styles: { font: 'helvetica', fontSize: 10, cellPadding: 6, overflow: 'linebreak' },
-    headStyles: { fillColor: [236, 236, 236], textColor: 40, fontStyle: 'bold', halign: 'left' },
+    styles: { font: 'helvetica', fontSize: 10, cellPadding: 6, overflow: 'linebreak', valign: 'middle' },
+    headStyles: { fillColor: [236, 236, 236], textColor: 40, fontStyle: 'bold', halign: 'right', fontSize: 9.5, cellPadding: { top: 6, bottom: 6, left: 6, right: 6 } },
     footStyles: { fillColor: [253, 230, 232], textColor: 194, fontStyle: 'bold' },
     columnStyles: {
-      0: { cellWidth: 90, fontStyle: 'bold', halign: 'left' },
-      1: { cellWidth: 90, halign: 'right' },
-      2: { cellWidth: 100, halign: 'right' },
-      3: { cellWidth: 90, halign: 'right' },
-      4: { cellWidth: 70, halign: 'right' },
+      0: { cellWidth: 80, fontStyle: 'bold', halign: 'left' },
+      1: { cellWidth: 95, halign: 'right' },
+      2: { cellWidth: 95, halign: 'right' },
+      3: { cellWidth: 95, halign: 'right' },
+      4: { cellWidth: 55, halign: 'right' },
       5: { cellWidth: 'auto', halign: 'right' },
+    },
+    didParseCell: (data) => {
+      // Left-align the "Stream" header to match its column.
+      if (data.section === 'head' && data.column.index === 0) data.cell.styles.halign = 'left';
     },
     margin: { left: margin, right: margin },
   });

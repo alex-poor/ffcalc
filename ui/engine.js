@@ -439,20 +439,22 @@
   ];
 
   // Practice-agnostic pass-through presets. `retention` = % the PHO retains per stream.
+  // First-Level is full pass-through (0% retention) by default; PHOs only top-slice if
+  // they enable it explicitly under Tweaks → Advanced.
   const SEED_TEMPLATES = [
-    { id: 't-generous',    name: 'Generous — 95% pass-through',   retention: { firstLevel: 5,  hop: 5,  sia: 5,  careplus: 5  } },
-    { id: 't-flat-90',     name: 'Flat — 90% pass-through',       retention: { firstLevel: 10, hop: 10, sia: 10, careplus: 10 } },
-    { id: 't-base-85',     name: 'Base — 85% pass-through',       retention: { firstLevel: 15, hop: 15, sia: 15, careplus: 15 } },
-    { id: 't-aggressive',  name: 'Aggressive retain — 75%',       retention: { firstLevel: 25, hop: 25, sia: 25, careplus: 25 } },
+    { id: 't-generous',    name: 'Generous — 95% pass on flexible',  retention: { firstLevel: 0, hop: 5,  sia: 5,  careplus: 5  } },
+    { id: 't-default-90',  name: 'Default — 90% pass on flexible',   retention: { firstLevel: 0, hop: 10, sia: 10, careplus: 10 } },
+    { id: 't-base-85',     name: 'Conservative — 85% pass',          retention: { firstLevel: 0, hop: 15, sia: 15, careplus: 15 } },
+    { id: 't-aggressive',  name: 'Aggressive retain — 75% pass',     retention: { firstLevel: 0, hop: 25, sia: 25, careplus: 25 } },
   ];
 
   const SEED_SCENARIOS = [
-    { id: 's-manukau-base',       practiceId: 'p-manukau-heights', name: 'Base offer — 85% pass-through',
-      retention: { firstLevel: 15, hop: 15, sia: 15, careplus: 15 }, created: Date.now() - 1000 * 60 * 60 * 2 },
-    { id: 's-manukau-aggressive', practiceId: 'p-manukau-heights', name: 'Aggressive retain — 75% pass-through',
-      retention: { firstLevel: 25, hop: 25, sia: 25, careplus: 25 }, created: Date.now() - 1000 * 60 * 60 },
+    { id: 's-manukau-base',       practiceId: 'p-manukau-heights', name: 'Base offer — 90% pass-through',
+      retention: { firstLevel: 0, hop: 10, sia: 10, careplus: 10 }, created: Date.now() - 1000 * 60 * 60 * 2 },
+    { id: 's-manukau-aggressive', practiceId: 'p-manukau-heights', name: 'Aggressive retain — 75% pass on flexible',
+      retention: { firstLevel: 0, hop: 25, sia: 25, careplus: 25 }, created: Date.now() - 1000 * 60 * 60 },
     { id: 's-hataitai-base',      practiceId: 'p-hataitai',        name: 'Hataitai base — 88% pass-through',
-      retention: { firstLevel: 12, hop: 12, sia: 12, careplus: 12 }, created: Date.now() - 1000 * 60 * 60 * 24 },
+      retention: { firstLevel: 0, hop: 12, sia: 12, careplus: 12 }, created: Date.now() - 1000 * 60 * 60 * 24 },
   ];
 
   // --- Format helpers ---

@@ -59,8 +59,9 @@ function App() {
   const [savingState, setSavingState] = React.useState('idle'); // idle, saving, saved
   const [tweaksOpen, setTweaksOpen] = React.useState(false);
   const [tweaks, setTweaks] = React.useState(() => {
-    try { return JSON.parse(localStorage.getItem('ffcalc:v1:tweaks')) || { theme: 'light', layout: 'twoPane', density: 'default' }; }
-    catch { return { theme: 'light', layout: 'twoPane', density: 'default' }; }
+    const defaults = { theme: 'light', layout: 'twoPane', density: 'default', flsTopSlice: false };
+    try { return { ...defaults, ...(JSON.parse(localStorage.getItem('ffcalc:v1:tweaks')) || {}) }; }
+    catch { return defaults; }
   });
 
   const { toasts, push: pushToast } = window.useToasts();
@@ -176,17 +177,20 @@ function App() {
       practiceId={route.practiceId}
       layoutVariant={tweaks.layout}
       density={tweaks.density}
+      flsTopSlice={tweaks.flsTopSlice}
       onBack={() => go({ name: 'register' })}
       onCompare={() => go({ name: 'compare' })}
       onEditPractice={(id) => go({ name: 'editor', practiceId: id })}
     />;
   } else if (routeName === 'compare') {
     screen = <window.Comparison {...common}
+      flsTopSlice={tweaks.flsTopSlice}
       onBack={() => go({ name: 'register' })}
       onOpenWorkbench={id => go({ name: 'workbench', practiceId: id })}
     />;
   } else if (routeName === 'network') {
     screen = <window.Network {...common}
+      flsTopSlice={tweaks.flsTopSlice}
       onBack={() => go({ name: 'register' })}
       onOpenWorkbench={id => go({ name: 'workbench', practiceId: id })}
     />;
@@ -231,7 +235,7 @@ function App() {
           <div style={{ fontSize: 11, color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: 6 }}>
             <ICONS.Drop size={12}/> Local-only · IndexedDB
           </div>
-          <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>v0.4.1 · Rates eff. 1 Jul 2025</div>
+          <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>v0.4.2 · Rates eff. 1 Jul 2025</div>
           {updateInfo ? (
             <button
               onClick={() => setUpdateModalOpen(true)}
@@ -407,6 +411,19 @@ function TweaksPanel({ tweaks, setTweaks, setState, pushToast, onCheckUpdate, up
             Tight
           </button>
         </div>
+      </TweakGroup>
+
+      <TweakGroup label="Advanced">
+        <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12.5, color: 'var(--text)', cursor: 'pointer', lineHeight: 1.4 }}>
+          <input type="checkbox" checked={!!tweaks.flsTopSlice} onChange={e => update({ flsTopSlice: e.target.checked })} style={{ marginTop: 2 }}/>
+          <span>
+            Allow First-Level top-slice
+            <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>
+              Off: First-Level capitation always passes 100% to practices (default).
+              On: shows a retention slider for First-Level alongside the others.
+            </div>
+          </span>
+        </label>
       </TweakGroup>
 
       <button
