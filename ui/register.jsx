@@ -13,7 +13,7 @@ function PracticeRegister({ state, setState, onOpenPractice, onEditPractice, onA
     const offer = r.grandTotal * (1 - defaultRetention);
     let variance = null;
     if (p.baseline) {
-      const base = (p.baseline.firstLevel || 0) + (p.baseline.hop || 0) + (p.baseline.sia || 0) + (p.baseline.careplus || 0);
+      const base = window.STREAM_KEYS.reduce((s, k) => s + (p.baseline[k] || 0), 0);
       variance = offer - base;
     }
     return { practice: p, total: r.grandTotal, offer, variance, patients: r.totalPatients };

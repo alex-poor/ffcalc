@@ -8,7 +8,7 @@ const cell = (over: Partial<PopulationCell> & { count: number }): PopulationCell
 });
 
 describe('calculateAll orchestrator', () => {
-  it('returns all four streams with consistent total', () => {
+  it('returns all six streams with consistent total', () => {
     const mix: PopulationMix = {
       practiceType: 'Non-Access',
       cells: [
@@ -18,7 +18,7 @@ describe('calculateAll orchestrator', () => {
       ],
     };
     const r = calculateAll(mix);
-    expect(r.streams.map(s => s.stream)).toEqual(['first-level', 'hop', 'sia', 'careplus']);
+    expect(r.streams.map(s => s.stream)).toEqual(['first-level', 'u14', 'contingent', 'hop', 'sia', 'careplus']);
     const summed = r.streams.reduce((a, s) => a + s.totalAnnual, 0);
     expect(r.totalAnnual).toBeCloseTo(summed, 6);
     expect(r.totalAnnual).toBeGreaterThan(0);

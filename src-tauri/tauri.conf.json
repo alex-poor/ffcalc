@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "FFCalc",
-  "version": "0.4.2",
+  "version": "0.5.0",
   "identifier": "nz.thepho.ffcalc",
   "build": {
     "frontendDist": "../ui",
@@ -26,7 +26,10 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis", "appimage"],
+    "targets": [
+      "nsis",
+      "appimage"
+    ],
     "category": "Productivity",
     "shortDescription": "thePHO Bulk Funding Calculator",
     "longDescription": "Calculate total Te Whatu Ora revenue per funding stream for any demographic roster, and model PHO pass-through pricing.",

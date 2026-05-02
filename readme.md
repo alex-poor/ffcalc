@@ -1,31 +1,34 @@
-# guide info for FFCalc project
+# FFCalc
 
-The end goal is to produce an interactive calculator tool which a NZ PHO can use to work with practices to estimate their income.
+Interactive calculator a NZ PHO uses with practices to estimate practice income under a bulk-funding arrangement. Built for **thePHO**.
 
-NZ PHOs distribute funding differently - this work is for a new PHO called 'thePHO' and they want to do a 'bulk funding' model.
+The engine ingests aggregated practice demographics and returns Te Whatu Ora → PHO revenue per stream; the UI then layers on per-stream pass-through (retention) sliders so finance staff can model the offer to the practice.
 
+## Funding streams
 
-## funding
+All rates are taken from the official Te Whatu Ora capitation rates page: https://www.tewhatuora.govt.nz/for-health-providers/primary-care-sector/capitation-rates. Each rate file (`src/rates/*.json`) carries a `source` and `sourceUrl` linking the relevant section, and the in-app **Rate Reference** screen renders these as clickable "View source" links.
 
-is based on demographics of enrolled patients (and some other variables). There are also specific funding programmes to consider, the main ones being:
+| Stream | Source | Drives |
+|---|---|---|
+| First-Level Services | s.1 + s.9 (CSC top-up) | Base capitation by age × gender × HUHC × practice type |
+| Zero Fees Under-14s | s.11 | Per-patient capitation for enrolled patients aged 0–13 (modern default) |
+| Zero Fees Under-6s | s.10 | Alternative scheme to ZF14, mutually exclusive |
+| Contingent Capitation | s.13 | Per-patient by age × gender; PHO may retain as a performance link |
+| Health Promotion (HOP) | s.4 | By ethnicity × deprivation; HUHC excluded |
+| Services to Improve Access (SIA) | s.5 | By age × gender × ethnicity × deprivation; HUHC excluded |
+| CarePlus | thePHO schedule (`examples/careplus funding.xlsx`) | By age × gender × deprivation × ethnicity |
 
-### SIA
-Formula is available at https://www.tewhatuora.govt.nz/for-health-providers/primary-care-sector/capitation-rates
+Practices toggle between the U14 and U6 schemes in the editor; the engine emits both stream keys for uniform iteration but only the active scheme contributes to the total.
 
-### Health Promotion
-Formula is available at https://www.tewhatuora.govt.nz/for-health-providers/primary-care-sector/capitation-rates
+## Reconciliation
 
-### CarePlus
-Formula can be seen in file examples/careplus funding.xlsx
+Two practices are checked against ProCare / Karo reports under `tests/reconcile.*.test.ts`:
 
-There are additionally a range of other PDF files included in examples/ subdir. Read these for context and understanding.
+- **Hillside Medical Centre** (April 2026) — First-Level + CSC, U14, and Contingent all reconcile within ±0.5%.
+- **Blockhouse Bay Medical Centre** (April 2026) — First-Level + CSC and U14 within ±1.5%; Contingent shows the expected ~15% PHO retention gap (engine = TWO→PHO gross; practice receipts net of "performance-linked" retention).
 
-ASK QUESTIONS IF YOU ARE UNSURE ABOUT ANYTHING.
+## Distribution
 
-## output
+Tauri-packaged desktop app (Windows .exe, Linux AppImage). Local-only: practice data stays in IndexedDB, no network calls at runtime. Releases are produced by tagging `v*` and pushing — see [.github/workflows/tauri.yml](.github/workflows/tauri.yml).
 
-we need to see Estimated Bulk Funding per Practice broken down across the 3 areas HOP, SIA and CP
-
-The tool should be easy to use, intuitive, and easy to 'scenario model' different mixes of patients and give reliable results.
-
-Practically it cannot be a public web app because of commercial sensitivity. Consider something like an electron app which can be easily used on different devices by people who don't have admin rights to install software.
+For deeper UI / data-model context see [brief.md](brief.md).

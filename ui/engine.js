@@ -171,6 +171,43 @@
     { ageBand: '65+',   gender: 'M', depBand: 'dep9-10', ethnicity: 'maori-pacific', rate: 118.563636 },
   ];
 
+  // Zero Fees Under-14s (s.11) — official Te Whatu Ora rates effective 1 July 2025.
+  // https://www.tewhatuora.govt.nz/for-health-providers/primary-care-sector/capitation-rates#11-zero-fees-for-under-14s
+  const U14_RATES = [
+    { ageBand: '0-4',  gender: 'F', rate: 127.9752 },
+    { ageBand: '0-4',  gender: 'M', rate: 134.7396 },
+    { ageBand: '5-14', gender: 'F', rate:  93.0264 },
+    { ageBand: '5-14', gender: 'M', rate:  92.7696 },
+  ];
+
+  // Zero Fees Under-6s (s.10) — alternative scheme to U14, mutually exclusive.
+  // https://www.tewhatuora.govt.nz/for-health-providers/primary-care-sector/capitation-rates#10-zero-fees-for-under-6s
+  const U6_RATES = [
+    { ageBand: '0-4',  gender: 'F', rate: 127.9752 },
+    { ageBand: '0-4',  gender: 'M', rate: 134.7396 },
+    { ageBand: '5-14', gender: 'F', rate:   4.0152 },
+    { ageBand: '5-14', gender: 'M', rate:   3.7584 },
+  ];
+
+  // Contingent Capitation (s.13) — official Te Whatu Ora rates effective 1 July 2025.
+  // https://www.tewhatuora.govt.nz/for-health-providers/primary-care-sector/capitation-rates#13-contingent-capitation-rates
+  // Te Whatu Ora pays this gross to the PHO; ProCare describes it as "performance-linked"
+  // and may retain a portion before passing to the practice.
+  const CONTINGENT_RATES = [
+    { ageBand: '0-4',   gender: 'F', rate: 32.7612 },
+    { ageBand: '0-4',   gender: 'M', rate: 34.8624 },
+    { ageBand: '5-14',  gender: 'F', rate:  8.5020 },
+    { ageBand: '5-14',  gender: 'M', rate:  8.0544 },
+    { ageBand: '15-24', gender: 'F', rate:  9.8100 },
+    { ageBand: '15-24', gender: 'M', rate:  5.3964 },
+    { ageBand: '25-44', gender: 'F', rate:  8.6256 },
+    { ageBand: '25-44', gender: 'M', rate:  5.5728 },
+    { ageBand: '45-64', gender: 'F', rate: 11.8224 },
+    { ageBand: '45-64', gender: 'M', rate:  8.8272 },
+    { ageBand: '65+',   gender: 'F', rate: 20.4132 },
+    { ageBand: '65+',   gender: 'M', rate: 17.6052 },
+  ];
+
   // Management Services (PHO-level, tiered by total enrolment). Paid to the PHO; not passed to practices.
   // Tier 1 additionally requires an approved Management Services Plan.
   // Source: https://www.tewhatuora.govt.nz/for-health-providers/primary-care-sector/capitation-rates#8-management-services
@@ -232,6 +269,27 @@
       sourceUrl: 'https://www.tewhatuora.govt.nz/for-health-providers/primary-care-sector/capitation-rates',
       notes: 'Age × gender × practice type × HUHC. Non-Access CSC holders receive an additional top-up.',
     },
+    u14: {
+      name: 'Zero Fees for Under 14s', shortName: 'Under-14s',
+      effective: '1 July 2025',
+      source: 'Te Whatu Ora Capitation Rates s.11',
+      sourceUrl: 'https://www.tewhatuora.govt.nz/for-health-providers/primary-care-sector/capitation-rates#11-zero-fees-for-under-14s',
+      notes: 'Per-patient capitation by age × gender for enrolled patients aged 0-13. Mutually exclusive with the Under-6s scheme — toggle in the practice editor.',
+    },
+    u6: {
+      name: 'Zero Fees for Under 6s', shortName: 'Under-6s',
+      effective: '1 July 2025',
+      source: 'Te Whatu Ora Capitation Rates s.10',
+      sourceUrl: 'https://www.tewhatuora.govt.nz/for-health-providers/primary-care-sector/capitation-rates#10-zero-fees-for-under-6s',
+      notes: 'Alternative to Under-14s for practices that did not opt into the extended scheme. The 0-4 rates are identical between the two; the 5-14 rates are minimal under U6 (just age-5 children).',
+    },
+    contingent: {
+      name: 'Contingent Capitation', shortName: 'Contingent',
+      effective: '1 July 2025',
+      source: 'Te Whatu Ora Capitation Rates s.13',
+      sourceUrl: 'https://www.tewhatuora.govt.nz/for-health-providers/primary-care-sector/capitation-rates#13-contingent-capitation-rates',
+      notes: 'Per-patient capitation by age × gender. Te Whatu Ora pays this gross to the PHO; ProCare and other PHOs may retain a portion against performance metrics ("performance-linked contingent capitation"). Engine output is the TWO→PHO gross.',
+    },
     hop: {
       name: 'Health Promotion (HOP)', shortName: 'HOP',
       effective: '1 July 2025',
@@ -256,9 +314,16 @@
   };
 
   // --- Indexes ---
-  const idx = { firstLevel: new Map(), csc: new Map(), hop: new Map(), sia: new Map(), careplus: new Map() };
+  const idx = {
+    firstLevel: new Map(), csc: new Map(),
+    u14: new Map(), u6: new Map(), contingent: new Map(),
+    hop: new Map(), sia: new Map(), careplus: new Map(),
+  };
   FIRST_LEVEL_RATES.forEach(r => idx.firstLevel.set(`${r.practiceType}|${r.ageBand}|${r.gender}|${r.huhc}`, r.rate));
   CSC_TOPUP_RATES.forEach(r => idx.csc.set(`${r.ageBand}|${r.gender}`, r.rate));
+  U14_RATES.forEach(r => idx.u14.set(`${r.ageBand}|${r.gender}`, r.rate));
+  U6_RATES.forEach(r => idx.u6.set(`${r.ageBand}|${r.gender}`, r.rate));
+  CONTINGENT_RATES.forEach(r => idx.contingent.set(`${r.ageBand}|${r.gender}`, r.rate));
   HOP_RATES.forEach(r => idx.hop.set(`${r.ethnicity}|${r.depBand}`, r.rate));
   SIA_RATES.forEach(r => idx.sia.set(`${r.ageBand}|${r.gender}|${r.ethnicity}|${r.depBand}`, r.rate));
   CAREPLUS_RATES.forEach(r => idx.careplus.set(`${r.ageBand}|${r.gender}|${r.depBand}|${r.ethnicity}`, r.rate));
@@ -306,13 +371,36 @@
       return (bands[ab] || 0) * pG;
     };
 
-    let flTotal = 0, hopTotal = 0, siaTotal = 0, cpTotal = 0;
-    const flCells = {}, hopCells = {}, siaCells = {}, cpCells = {};
+    // Practice-level toggle: which Zero-Fees scheme is the practice on?
+    // Defaults to U14 (the modern default; both Hillside and Blockhouse Bay are on U14).
+    const zeroFeesScheme = practice.zeroFeesScheme === 'u6' ? 'u6' : 'u14';
+    const zfIndex = zeroFeesScheme === 'u14' ? idx.u14 : idx.u6;
+
+    let flTotal = 0, zfTotal = 0, contTotal = 0, hopTotal = 0, siaTotal = 0, cpTotal = 0;
+    const flCells = {}, zfCells = {}, contCells = {}, hopCells = {}, siaCells = {}, cpCells = {};
 
     for (const ab of AGE_BANDS) {
       for (const g of ['F', 'M']) {
         const agCount = ageGenderCount(ab, g);
         if (agCount === 0) continue;
+
+        // Zero-Fees stream (U14 or U6). Age × gender lookup. $0 outside 0-14.
+        const zfRate = zfIndex.get(`${ab}|${g}`) || 0;
+        if (zfRate > 0) {
+          const amt = agCount * zfRate;
+          zfTotal += amt;
+          const lbl = `${ab} · ${g === 'F' ? 'Female' : 'Male'}`;
+          zfCells[lbl] = { label: lbl, count: agCount, rate: zfRate, amount: amt };
+        }
+
+        // Contingent — age × gender lookup, no other dimensions.
+        const contRate = idx.contingent.get(`${ab}|${g}`) || 0;
+        if (contRate > 0) {
+          const amt = agCount * contRate;
+          contTotal += amt;
+          const lbl = `${ab} · ${g === 'F' ? 'Female' : 'Male'}`;
+          contCells[lbl] = { label: lbl, count: agCount, rate: contRate, amount: amt };
+        }
 
         // First-Level: walk all four (HUHC × CSC) joint slices to apply base + top-up correctly.
         for (const huhc of ['N', 'Y']) {
@@ -388,23 +476,41 @@
       return arr;
     };
 
+    // Zero-fees stream is emitted under whichever key matches the scheme. The other
+    // key gets $0 — keeps STREAM_KEYS-driven iterations uniform across practices.
+    const zfIsU14 = zeroFeesScheme === 'u14';
+    const zfStreamU14 = zfIsU14
+      ? { total: zfTotal, cells: finishCells(zfCells, false), ...RATES_META.u14 }
+      : { total: 0, cells: [], ...RATES_META.u14 };
+    const zfStreamU6 = zfIsU14
+      ? { total: 0, cells: [], ...RATES_META.u6 }
+      : { total: zfTotal, cells: finishCells(zfCells, false), ...RATES_META.u6 };
+
     return {
       totalPatients: total,
+      zeroFeesScheme,
       streams: {
-        firstLevel: { total: flTotal, cells: finishCells(flCells, false),  ...RATES_META.firstLevel },
-        hop:        { total: hopTotal, cells: finishCells(hopCells, false), ...RATES_META.hop },
-        sia:        { total: siaTotal, cells: finishCells(siaCells, true),  ...RATES_META.sia },
-        careplus:   { total: cpTotal,  cells: finishCells(cpCells, true),   ...RATES_META.careplus },
+        firstLevel: { total: flTotal,   cells: finishCells(flCells, false),   ...RATES_META.firstLevel },
+        u14:        zfStreamU14,
+        u6:         zfStreamU6,
+        contingent: { total: contTotal, cells: finishCells(contCells, false), ...RATES_META.contingent },
+        hop:        { total: hopTotal,  cells: finishCells(hopCells, false),  ...RATES_META.hop },
+        sia:        { total: siaTotal,  cells: finishCells(siaCells, true),   ...RATES_META.sia },
+        careplus:   { total: cpTotal,   cells: finishCells(cpCells, true),    ...RATES_META.careplus },
       },
-      grandTotal: flTotal + hopTotal + siaTotal + cpTotal,
+      grandTotal: flTotal + zfTotal + contTotal + hopTotal + siaTotal + cpTotal,
     };
   }
 
   function emptyResult() {
     return {
       totalPatients: 0,
+      zeroFeesScheme: 'u14',
       streams: {
         firstLevel: { total: 0, cells: [], ...RATES_META.firstLevel },
+        u14:        { total: 0, cells: [], ...RATES_META.u14 },
+        u6:         { total: 0, cells: [], ...RATES_META.u6 },
+        contingent: { total: 0, cells: [], ...RATES_META.contingent },
         hop:        { total: 0, cells: [], ...RATES_META.hop },
         sia:        { total: 0, cells: [], ...RATES_META.sia },
         careplus:   { total: 0, cells: [], ...RATES_META.careplus },
@@ -441,20 +547,24 @@
   // Practice-agnostic pass-through presets. `retention` = % the PHO retains per stream.
   // First-Level is full pass-through (0% retention) by default; PHOs only top-slice if
   // they enable it explicitly under Tweaks → Advanced.
+  // Default retention by stream type:
+  //   First-Level / U14 / U6 — capitation pass-through, 0% retained by default.
+  //   Contingent — performance-linked; defaults to 15% PHO retention to match observed behaviour.
+  //   HOP / SIA / CarePlus — flexible funding; tunable per scenario.
   const SEED_TEMPLATES = [
-    { id: 't-generous',    name: 'Generous — 95% pass on flexible',  retention: { firstLevel: 0, hop: 5,  sia: 5,  careplus: 5  } },
-    { id: 't-default-90',  name: 'Default — 90% pass on flexible',   retention: { firstLevel: 0, hop: 10, sia: 10, careplus: 10 } },
-    { id: 't-base-85',     name: 'Conservative — 85% pass',          retention: { firstLevel: 0, hop: 15, sia: 15, careplus: 15 } },
-    { id: 't-aggressive',  name: 'Aggressive retain — 75% pass',     retention: { firstLevel: 0, hop: 25, sia: 25, careplus: 25 } },
+    { id: 't-generous',    name: 'Generous — 95% pass on flexible',  retention: { firstLevel: 0, u14: 0, u6: 0, contingent: 15, hop: 5,  sia: 5,  careplus: 5  } },
+    { id: 't-default-90',  name: 'Default — 90% pass on flexible',   retention: { firstLevel: 0, u14: 0, u6: 0, contingent: 15, hop: 10, sia: 10, careplus: 10 } },
+    { id: 't-base-85',     name: 'Conservative — 85% pass',          retention: { firstLevel: 0, u14: 0, u6: 0, contingent: 15, hop: 15, sia: 15, careplus: 15 } },
+    { id: 't-aggressive',  name: 'Aggressive retain — 75% pass',     retention: { firstLevel: 0, u14: 0, u6: 0, contingent: 25, hop: 25, sia: 25, careplus: 25 } },
   ];
 
   const SEED_SCENARIOS = [
     { id: 's-manukau-base',       practiceId: 'p-manukau-heights', name: 'Base offer — 90% pass-through',
-      retention: { firstLevel: 0, hop: 10, sia: 10, careplus: 10 }, created: Date.now() - 1000 * 60 * 60 * 2 },
+      retention: { firstLevel: 0, u14: 0, u6: 0, contingent: 15, hop: 10, sia: 10, careplus: 10 }, created: Date.now() - 1000 * 60 * 60 * 2 },
     { id: 's-manukau-aggressive', practiceId: 'p-manukau-heights', name: 'Aggressive retain — 75% pass on flexible',
-      retention: { firstLevel: 0, hop: 25, sia: 25, careplus: 25 }, created: Date.now() - 1000 * 60 * 60 },
+      retention: { firstLevel: 0, u14: 0, u6: 0, contingent: 25, hop: 25, sia: 25, careplus: 25 }, created: Date.now() - 1000 * 60 * 60 },
     { id: 's-hataitai-base',      practiceId: 'p-hataitai',        name: 'Hataitai base — 88% pass-through',
-      retention: { firstLevel: 0, hop: 12, sia: 12, careplus: 12 }, created: Date.now() - 1000 * 60 * 60 * 24 },
+      retention: { firstLevel: 0, u14: 0, u6: 0, contingent: 12, hop: 12, sia: 12, careplus: 12 }, created: Date.now() - 1000 * 60 * 60 * 24 },
   ];
 
   // --- Format helpers ---
@@ -485,7 +595,7 @@
 
   Object.assign(window, {
     AGE_BANDS,
-    FIRST_LEVEL_RATES, CSC_TOPUP_RATES, HOP_RATES, SIA_RATES, CAREPLUS_RATES,
+    FIRST_LEVEL_RATES, CSC_TOPUP_RATES, U14_RATES, U6_RATES, CONTINGENT_RATES, HOP_RATES, SIA_RATES, CAREPLUS_RATES,
     RATES_META,
     MGMT_META, MGMT_RATES,
     ffCompute: compute,

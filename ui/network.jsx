@@ -3,7 +3,7 @@
 const { Button, ICONS, STREAM_KEYS, STREAM_LABELS, STREAM_COLORS, Money, StackedBar, VarianceChip } = window;
 
 function Network({ state, onBack, onOpenWorkbench, pushToast, flsTopSlice }) {
-  const DEFAULT_NETWORK_RET = { firstLevel: 0, hop: 10, sia: 10, careplus: 10 };
+  const DEFAULT_NETWORK_RET = { firstLevel: 0, u14: 0, u6: 0, contingent: 15, hop: 10, sia: 10, careplus: 10 };
   const [retention, setRetention] = React.useState(() => {
     try { return { ...DEFAULT_NETWORK_RET, ...(JSON.parse(localStorage.getItem('ffcalc:v1:network-ret')) || {}) }; }
     catch { return DEFAULT_NETWORK_RET; }
@@ -22,7 +22,8 @@ function Network({ state, onBack, onOpenWorkbench, pushToast, flsTopSlice }) {
     const r = window.ffCompute(p);
     const retained = {}; const offers = {};
     STREAM_KEYS.forEach(k => {
-      retained[k] = r.streams[k].total * effRetention[k] / 100;
+      const ret = effRetention[k] || 0;
+      retained[k] = r.streams[k].total * ret / 100;
       offers[k] = r.streams[k].total - retained[k];
     });
     const totalOffer = Object.values(offers).reduce((s, v) => s + v, 0);
@@ -34,9 +35,9 @@ function Network({ state, onBack, onOpenWorkbench, pushToast, flsTopSlice }) {
   }), [state.practices, retention, flsTopSlice]);
 
   const network = React.useMemo(() => {
-    const gross = { firstLevel: 0, hop: 0, sia: 0, careplus: 0 };
-    const retainedByStream = { firstLevel: 0, hop: 0, sia: 0, careplus: 0 };
-    const offerByStream = { firstLevel: 0, hop: 0, sia: 0, careplus: 0 };
+    const gross = { firstLevel: 0, u14: 0, u6: 0, contingent: 0, hop: 0, sia: 0, careplus: 0 };
+    const retainedByStream = { firstLevel: 0, u14: 0, u6: 0, contingent: 0, hop: 0, sia: 0, careplus: 0 };
+    const offerByStream = { firstLevel: 0, u14: 0, u6: 0, contingent: 0, hop: 0, sia: 0, careplus: 0 };
     let patients = 0;
     let baselineKnownTotal = 0;
     let baselineKnownPractices = 0;
@@ -68,9 +69,11 @@ function Network({ state, onBack, onOpenWorkbench, pushToast, flsTopSlice }) {
   }, [practiceRows, mgmtPlan]);
 
   const setRet = (stream, v) => setRetention(r => ({ ...r, [stream]: v }));
+  // U14/U6 retention is held at 0% (full pass-through) — not user-tunable; zero-fees streams are capitation top-ups like First-Level.
+  // Contingent gets the same retention as the master slider.
   const setAllRet = (v) => setRetention(r => flsTopSlice
-    ? { firstLevel: v, hop: v, sia: v, careplus: v }
-    : { firstLevel: r.firstLevel, hop: v, sia: v, careplus: v });
+    ? { firstLevel: v, u14: 0, u6: 0, contingent: v, hop: v, sia: v, careplus: v }
+    : { firstLevel: r.firstLevel, u14: 0, u6: 0, contingent: v, hop: v, sia: v, careplus: v });
   const masterRet = flsTopSlice
     ? Math.round((retention.firstLevel + retention.hop + retention.sia + retention.careplus) / 4)
     : Math.round((retention.hop + retention.sia + retention.careplus) / 3);
@@ -116,7 +119,7 @@ function Network({ state, onBack, onOpenWorkbench, pushToast, flsTopSlice }) {
             Network revenue composition
           </div>
           <StackedBar items={[
-            ...STREAM_KEYS.map(k => ({ label: STREAM_LABELS[k], value: network.gross[k], color: STREAM_COLORS[k] })),
+            ...STREAM_KEYS.filter(k => network.gross[k] > 0).map(k => ({ label: STREAM_LABELS[k], value: network.gross[k], color: STREAM_COLORS[k] })),
             { label: 'Management', value: network.mgmt.total, color: 'var(--navy)' },
           ]} height={10} showLabels/>
         </div>
@@ -145,7 +148,7 @@ function Network({ state, onBack, onOpenWorkbench, pushToast, flsTopSlice }) {
             </div>
             <table className="table" style={{ fontSize: 12.5 }}>
               <tbody>
-                {STREAM_KEYS.map(k => (
+                {STREAM_KEYS.filter(k => network.gross[k] > 0).map(k => (
                   <tr key={k}>
                     <td style={{ padding: '6px 0', border: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{ width: 8, height: 8, borderRadius: 2, background: STREAM_COLORS[k] }}/>

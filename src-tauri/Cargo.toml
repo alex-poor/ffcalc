@@ -1,6 +1,6 @@
 [package]
 name = "ffcalc"
-version = "0.4.2"
+version = "0.5.0"
 description = "thePHO Bulk Funding Calculator"
 authors = ["thePHO"]
 license = ""

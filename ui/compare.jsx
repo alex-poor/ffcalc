@@ -45,7 +45,8 @@ function ScenarioCompare({ state, setState, onOpenWorkbench, pushToast, flsTopSl
     const eff = { ...sc.retention, firstLevel: flsTopSlice ? sc.retention.firstLevel : 0 };
     const offers = {}; const retained = {};
     STREAM_KEYS.forEach(k => {
-      retained[k] = r.streams[k].total * eff[k] / 100;
+      const ret = eff[k] || 0;          // default to 0% retention for streams not in saved scenario (e.g. u14)
+      retained[k] = r.streams[k].total * ret / 100;
       offers[k] = r.streams[k].total - retained[k];
     });
     const totalOffer = Object.values(offers).reduce((s, v) => s + v, 0);
@@ -63,6 +64,9 @@ function ScenarioCompare({ state, setState, onOpenWorkbench, pushToast, flsTopSl
 
   const availableToAdd = state.scenarios.filter(s => !state.compareIds.includes(s.id));
   const maxOffer = Math.max(...rows.map(r => r.totalOffer), 0);
+  // Hide rows for streams that are $0 across every scenario in view (typically the inactive
+  // zero-fees scheme) — keeps the table compact when comparing practices on the same scheme.
+  const visibleStreamKeys = STREAM_KEYS.filter(k => rows.some(r => r.result.streams[k].total > 0));
 
   return (
     <>
@@ -103,7 +107,7 @@ function ScenarioCompare({ state, setState, onOpenWorkbench, pushToast, flsTopSl
             </thead>
             <tbody>
               <SectionHeader label="PHO revenue (gross)" cols={rows.length}/>
-              {STREAM_KEYS.map(k => (
+              {visibleStreamKeys.map(k => (
                 <tr key={k}>
                   <td style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ width: 8, height: 8, borderRadius: 2, background: STREAM_COLORS[k] }}/>
@@ -122,17 +126,17 @@ function ScenarioCompare({ state, setState, onOpenWorkbench, pushToast, flsTopSl
               </tr>
 
               <SectionHeader label="Pass-through %" cols={rows.length}/>
-              {STREAM_KEYS.map(k => (
+              {visibleStreamKeys.map(k => (
                 <tr key={k}>
                   <td style={{ color: 'var(--text-muted)' }}>{STREAM_LABELS[k]}</td>
                   {rows.map(r => (
-                    <td key={r.scenario.id} className="num">{100 - r.eff[k]}%</td>
+                    <td key={r.scenario.id} className="num">{100 - (r.eff[k] || 0)}%</td>
                   ))}
                 </tr>
               ))}
 
               <SectionHeader label="Offer to practice" cols={rows.length}/>
-              {STREAM_KEYS.map(k => (
+              {visibleStreamKeys.map(k => (
                 <tr key={k}>
                   <td style={{ color: 'var(--text-muted)' }}>{STREAM_LABELS[k]}</td>
                   {rows.map(r => (
@@ -160,7 +164,7 @@ function ScenarioCompare({ state, setState, onOpenWorkbench, pushToast, flsTopSl
               </tr>
 
               <SectionHeader label="Variance vs current PHO" cols={rows.length}/>
-              {STREAM_KEYS.map(k => (
+              {visibleStreamKeys.map(k => (
                 <tr key={k}>
                   <td style={{ color: 'var(--text-muted)' }}>{STREAM_LABELS[k]}</td>
                   {rows.map(r => {
@@ -216,7 +220,7 @@ function ScenarioCompare({ state, setState, onOpenWorkbench, pushToast, flsTopSl
 // Default retention used if user hasn't picked a scenario:
 //   90% pass-through on flexible streams; First-Level always 100% pass unless
 //   top-slice is enabled (Tweaks → Advanced).
-const DEFAULT_RETENTION = { firstLevel: 0, hop: 10, sia: 10, careplus: 10 };
+const DEFAULT_RETENTION = { firstLevel: 0, u14: 0, u6: 0, contingent: 15, hop: 10, sia: 10, careplus: 10 };
 
 function VsCurrentCompare({ state, setState, onOpenWorkbench, pushToast, flsTopSlice }) {
   const [practiceId, setPracticeId] = React.useState(() => {
@@ -252,7 +256,8 @@ function VsCurrentCompare({ state, setState, onOpenWorkbench, pushToast, flsTopS
   const result = window.ffCompute(practice);
   const offers = {}; const retained = {};
   STREAM_KEYS.forEach(k => {
-    retained[k] = result.streams[k].total * retention[k] / 100;
+    const ret = retention[k] || 0;
+    retained[k] = result.streams[k].total * ret / 100;
     offers[k] = result.streams[k].total - retained[k];
   });
   const totalOffer = Object.values(offers).reduce((s, v) => s + v, 0);
@@ -320,7 +325,7 @@ function VsCurrentCompare({ state, setState, onOpenWorkbench, pushToast, flsTopS
             </tr>
           </thead>
           <tbody>
-            {STREAM_KEYS.map(k => {
+            {STREAM_KEYS.filter(k => result.streams[k].total > 0 || (baselineTotals[k] || 0) > 0).map(k => {
               const base = baselineTotals[k];
               const offer = offers[k];
               const delta = base != null ? offer - base : null;
@@ -333,7 +338,7 @@ function VsCurrentCompare({ state, setState, onOpenWorkbench, pushToast, flsTopS
                   <td className="num">{base != null ? window.fmtCurrency(base) : <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>—</span>}</td>
                   <td className="num">{window.fmtCurrency(offer)}</td>
                   <td className="num">{delta != null ? <VarianceChip value={delta}/> : <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>—</span>}</td>
-                  <td className="num">{100 - retention[k]}%</td>
+                  <td className="num">{100 - (retention[k] || 0)}%</td>
                 </tr>
               );
             })}
@@ -414,22 +419,25 @@ function buildVsCurrentPDF({ practice, result, retention, offers, retained, base
   });
   y += boxH + 18;
 
-  // Stream table
-  const rows = window.STREAM_KEYS.map(k => {
-    const b = baseline[k];
-    const offer = offers[k];
-    const ret = retained[k];
-    const d = b != null ? offer - b : null;
-    const pct = 100 - retention[k];
-    return [
-      window.STREAM_LABELS[k],
-      b != null ? fmtPdfMoney(b) : 'n/a',
-      fmtPdfMoney(offer),
-      d != null ? fmtPdfSigned(d) : 'n/a',
-      pct + '%',
-      fmtPdfMoney(ret),
-    ];
-  });
+  // Stream table — hide rows that are $0 in both engine output and baseline
+  // (typically the inactive zero-fees scheme).
+  const rows = window.STREAM_KEYS
+    .filter(k => result.streams[k].total > 0 || (baseline[k] || 0) > 0)
+    .map(k => {
+      const b = baseline[k];
+      const offer = offers[k];
+      const ret = retained[k];
+      const d = b != null ? offer - b : null;
+      const pct = 100 - (retention[k] || 0);
+      return [
+        window.STREAM_LABELS[k],
+        b != null ? fmtPdfMoney(b) : 'n/a',
+        fmtPdfMoney(offer),
+        d != null ? fmtPdfSigned(d) : 'n/a',
+        pct + '%',
+        fmtPdfMoney(ret),
+      ];
+    });
 
   autoTable(doc, {
     startY: y,

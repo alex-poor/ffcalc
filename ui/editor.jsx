@@ -152,7 +152,7 @@ function PracticeEditor({ practiceId, state, setState, onSave, onOpenWorkbench, 
 
       <div className="card" style={{ marginBottom: 20 }}>
         <div className="card-head"><h3>Practice</h3></div>
-        <div className="card-body" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24 }}>
+        <div className="card-body" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 24 }}>
           <div className="field">
             <label>Practice name</label>
             <input className={'input' + (errors.name ? ' error' : '')}
@@ -168,6 +168,16 @@ function PracticeEditor({ practiceId, state, setState, onSave, onOpenWorkbench, 
             </div>
             <div className="hint" style={{ fontSize: 11.5 }}>
               VLCA practices (Very Low Cost Access) receive ~20% higher First-Level capitation.
+            </div>
+          </div>
+          <div className="field">
+            <label>Zero-fees scheme</label>
+            <div className="seg" style={{ alignSelf: 'flex-start' }}>
+              <button className={(draft.zeroFeesScheme || 'u14') === 'u14' ? 'on' : ''} onClick={() => update({ zeroFeesScheme: 'u14' })}>Under-14s</button>
+              <button className={draft.zeroFeesScheme === 'u6' ? 'on' : ''} onClick={() => update({ zeroFeesScheme: 'u6' })}>Under-6s</button>
+            </div>
+            <div className="hint" style={{ fontSize: 11.5 }}>
+              Most modern practices are on Under-14s (extended scheme). Under-6s is the legacy default.
             </div>
           </div>
         </div>
@@ -281,20 +291,25 @@ function PracticeEditor({ practiceId, state, setState, onSave, onOpenWorkbench, 
             Optional. Paste from the practice's existing arrangement.
           </span>
         </button>
-        {showBaseline && (
-          <div className="card-body" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
-            {['firstLevel', 'hop', 'sia', 'careplus'].map(k => (
-              <div className="field" key={k}>
-                <label>{window.RATES_META[k].shortName} ($ / yr)</label>
-                <input className="input num" type="number" min="0"
-                  value={draft.baseline?.[k] ?? ''}
-                  onChange={e => update({
-                    baseline: { ...(draft.baseline || {}), [k]: e.target.value === '' ? null : parseInt(e.target.value, 10) },
-                  })}/>
-              </div>
-            ))}
-          </div>
-        )}
+        {showBaseline && (() => {
+          // Hide the inactive zero-fees scheme so the baseline grid stays compact.
+          const scheme = draft.zeroFeesScheme || 'u14';
+          const visibleKeys = window.STREAM_KEYS.filter(k => k === scheme || (k !== 'u14' && k !== 'u6'));
+          return (
+            <div className="card-body" style={{ display: 'grid', gridTemplateColumns: `repeat(${visibleKeys.length}, 1fr)`, gap: 16 }}>
+              {visibleKeys.map(k => (
+                <div className="field" key={k}>
+                  <label>{window.RATES_META[k].shortName} ($ / yr)</label>
+                  <input className="input num" type="number" min="0"
+                    value={draft.baseline?.[k] ?? ''}
+                    onChange={e => update({
+                      baseline: { ...(draft.baseline || {}), [k]: e.target.value === '' ? null : parseInt(e.target.value, 10) },
+                    })}/>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );

@@ -1,0 +1,21 @@
+{
+  "stream": "u6",
+  "effectiveDate": "2025-07-01",
+  "source": "Te Whatu Ora Capitation Rates s.10 — Zero Fees for Under-6s",
+  "sourceUrl": "https://www.tewhatuora.govt.nz/for-health-providers/primary-care-sector/capitation-rates#10-zero-fees-for-under-6s",
+  "currency": "NZD",
+  "unit": "per-patient-per-year",
+  "gst": "excluded",
+  "dimensions": ["ageBand", "gender"],
+  "notes": [
+    "Per-patient capitation. Paid on enrolled patients aged 0-5 — the 5-14 band rates are minimal supplementary amounts (just age-5 children).",
+    "Mutually exclusive with the U14 scheme (s.11). The 0-4 band rates are identical between the two schemes; they differ at the 5-14 band, where U14 is ~$93/yr and U6 is ~$4/yr.",
+    "Both Hillside and Blockhouse Bay reconcile to U14, not U6 — most modern practices appear to be on U14."
+  ],
+  "rates": [
+    { "ageBand": "0-4",  "gender": "F", "rate": 127.9752 },
+    { "ageBand": "0-4",  "gender": "M", "rate": 134.7396 },
+    { "ageBand": "5-14", "gender": "F", "rate":   4.0152 },
+    { "ageBand": "5-14", "gender": "M", "rate":   3.7584 }
+  ]
+}

@@ -1,15 +1,28 @@
-# FFCalc v0.4.2
+# FFCalc v0.5.0
 
-## Changed
+## Added
 
-- **First-Level capitation now passes 100% to practices by default.** The First-Level retention slider is hidden in the Workbench, Network, and saved scenarios — only HOP, SIA, and CarePlus are top-sliced. To re-enable First-Level top-slicing for advanced modelling, tick **Tweaks → Advanced → Allow First-Level top-slice**.
-- **Default pass-through across the app is now 90%** for HOP, SIA, and CarePlus (combined with the 100% First-Level pass-through above). Affects new scenarios, new workbench loads, the Network slider, and the Comparison "vs Current PHO" mode.
-- **Comparison no longer auto-loads** the most recent saved scenario. The dropdown defaults to the standard pass-through above; pick a saved scenario explicitly if you want one.
+- **Three new funding streams** wired into the engine, all sourced from the official Te Whatu Ora capitation rates page:
+  - **Zero Fees for Under-14s (ZF14)** — section 11.
+  - **Zero Fees for Under-6s (ZF6)** — section 10. Alternative to ZF14; toggle in the practice editor (defaults to U14).
+  - **Contingent Capitation** — section 13. Te Whatu Ora pays this gross to the PHO; ProCare and other PHOs may retain a portion as a performance link.
+- **Practice editor** now has a Zero-fees scheme selector (Under-14s / Under-6s) alongside the practice-type toggle.
+- **Rate Reference screen** picks up U14, U6, and Contingent tables, each with a clickable "View source" link to the Te Whatu Ora section the rates came from.
+- **Hillside Medical Centre** added as a second reconciliation fixture in `tests/reconcile.hillside.test.ts`.
 
-## Fixed
+## Reconciliation
 
-- PDF export from Comparison no longer breaks column headers mid-word; column widths and headers reworked to fit cleanly.
+Validated against ProCare reports (April 2026):
+
+| Stream | Hillside Δ | Blockhouse Bay Δ |
+|---|---|---|
+| First-Level + CSC | −0.4% | −1.4% |
+| U14 | −0.3% | +0.0% |
+| Contingent (gross) | −0.5% | +14.9% (PHO retention) |
+
+The Blockhouse Bay contingent gap is **not an engine bug** — engine output is the TWO→PHO gross figure; the practice statement shows receipts net of ProCare's "performance-linked" retention.
 
 ## Notes
 
-If you have saved scenarios that include First-Level retention, those values are preserved but ignored while First-Level top-slice is locked off. Toggling the advanced tweak back on restores them.
+- Both Hillside and Blockhouse Bay reconcile to the U14 scheme. Note that Karo's older "Under-6 capitation supplement" column label is legacy — many practices on it actually receive U14 amounts.
+- The inactive zero-fees scheme is hidden from per-practice views (workbench, comparison, vs-current PDF) so the UI stays compact.

@@ -1,0 +1,29 @@
+{
+  "stream": "contingent",
+  "effectiveDate": "2025-07-01",
+  "source": "Te Whatu Ora Capitation Rates s.13 — Contingent Capitation Rates",
+  "sourceUrl": "https://www.tewhatuora.govt.nz/for-health-providers/primary-care-sector/capitation-rates#13-contingent-capitation-rates",
+  "currency": "NZD",
+  "unit": "per-patient-per-year",
+  "gst": "excluded",
+  "dimensions": ["ageBand", "gender"],
+  "notes": [
+    "Per-patient capitation. Te Whatu Ora pays this to the PHO at the published rate per enrolled patient (age × gender).",
+    "ProCare's documentation describes this as 'performance-linked contingent capitation' — what reaches the practice may be reduced by PHO retention against performance metrics. Engine computes the gross TWO→PHO figure; gap to practice receipts is the PHO's retention slice.",
+    "Reconciles to within 0.5% at Hillside (≈100% pass-through) and ~15% high at Blockhouse Bay (PHO retains ~15%, consistent with per-GP variation in March 2026 CBF report)."
+  ],
+  "rates": [
+    { "ageBand": "0-4",   "gender": "F", "rate": 32.7612 },
+    { "ageBand": "0-4",   "gender": "M", "rate": 34.8624 },
+    { "ageBand": "5-14",  "gender": "F", "rate":  8.5020 },
+    { "ageBand": "5-14",  "gender": "M", "rate":  8.0544 },
+    { "ageBand": "15-24", "gender": "F", "rate":  9.8100 },
+    { "ageBand": "15-24", "gender": "M", "rate":  5.3964 },
+    { "ageBand": "25-44", "gender": "F", "rate":  8.6256 },
+    { "ageBand": "25-44", "gender": "M", "rate":  5.5728 },
+    { "ageBand": "45-64", "gender": "F", "rate": 11.8224 },
+    { "ageBand": "45-64", "gender": "M", "rate":  8.8272 },
+    { "ageBand": "65+",   "gender": "F", "rate": 20.4132 },
+    { "ageBand": "65+",   "gender": "M", "rate": 17.6052 }
+  ]
+}

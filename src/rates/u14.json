@@ -1,0 +1,21 @@
+{
+  "stream": "u14",
+  "effectiveDate": "2025-07-01",
+  "source": "Te Whatu Ora Capitation Rates s.11 — Zero Fees for Under-14s",
+  "sourceUrl": "https://www.tewhatuora.govt.nz/for-health-providers/primary-care-sector/capitation-rates#11-zero-fees-for-under-14s",
+  "currency": "NZD",
+  "unit": "per-patient-per-year",
+  "gst": "excluded",
+  "dimensions": ["ageBand", "gender"],
+  "notes": [
+    "Per-patient capitation. Paid on enrolled patients aged 0-13. The 5-14 band rate already nets out age 14 (eligibility cutoff) — apply the band rate to the whole 5-14 enrolment count.",
+    "Mutually exclusive with the U6 scheme (s.10). Practices that did not opt into Zero Fees for Under-14s receive U6 rates instead — see u6.json.",
+    "Reconciles to within 0.3% at Hillside Medical Centre and 0.03% at Blockhouse Bay Medical Centre (April 2026 ProCare reports), confirming both are on the U14 scheme."
+  ],
+  "rates": [
+    { "ageBand": "0-4",  "gender": "F", "rate": 127.9752 },
+    { "ageBand": "0-4",  "gender": "M", "rate": 134.7396 },
+    { "ageBand": "5-14", "gender": "F", "rate":  93.0264 },
+    { "ageBand": "5-14", "gender": "M", "rate":  92.7696 }
+  ]
+}

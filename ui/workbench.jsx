@@ -4,7 +4,7 @@ const { Button, Modal, PromptModal, ConfirmModal, TypeChip, Money, VarianceChip,
 
 function Workbench({ practiceId, state, setState, onBack, onCompare, onEditPractice, pushToast, pushHistory, layoutVariant, density, flsTopSlice }) {
   const practice = state.practices.find(p => p.id === practiceId);
-  const [retention, setRetention] = React.useState({ firstLevel: 0, hop: 10, sia: 10, careplus: 10 });
+  const [retention, setRetention] = React.useState({ firstLevel: 0, u14: 0, u6: 0, contingent: 15, hop: 10, sia: 10, careplus: 10 });
   const [expanded, setExpanded] = React.useState({});
   const [saveOpen, setSaveOpen] = React.useState(false);
   const [scenarioName, setScenarioName] = React.useState('');
@@ -30,31 +30,28 @@ function Workbench({ practiceId, state, setState, onBack, onCompare, onEditPract
   // First-Level top-slice locked off by default (full pass-through). Tweaks → Advanced enables it.
   const effRetention = { ...retention, firstLevel: flsTopSlice ? retention.firstLevel : 0 };
 
-  const streamRetained = {
-    firstLevel: result.streams.firstLevel.total * effRetention.firstLevel / 100,
-    hop: result.streams.hop.total * effRetention.hop / 100,
-    sia: result.streams.sia.total * effRetention.sia / 100,
-    careplus: result.streams.careplus.total * effRetention.careplus / 100,
-  };
-  const streamOffer = {
-    firstLevel: result.streams.firstLevel.total - streamRetained.firstLevel,
-    hop: result.streams.hop.total - streamRetained.hop,
-    sia: result.streams.sia.total - streamRetained.sia,
-    careplus: result.streams.careplus.total - streamRetained.careplus,
-  };
+  // U14/U6 are capitation top-ups — full pass-through, no user-tunable retention.
+  // Contingent retention is editable via "Apply to all" for now.
+  const streamRetained = {};
+  const streamOffer = {};
+  STREAM_KEYS.forEach(k => {
+    const ret = effRetention[k] || 0;
+    streamRetained[k] = result.streams[k].total * ret / 100;
+    streamOffer[k] = result.streams[k].total - streamRetained[k];
+  });
   const totalRetained = Object.values(streamRetained).reduce((s, v) => s + v, 0);
   const totalOffer = Object.values(streamOffer).reduce((s, v) => s + v, 0);
   const baselineTotal = practice.baseline
-    ? (practice.baseline.firstLevel || 0) + (practice.baseline.hop || 0) + (practice.baseline.sia || 0) + (practice.baseline.careplus || 0)
+    ? STREAM_KEYS.reduce((s, k) => s + (practice.baseline[k] || 0), 0)
     : null;
   const variance = baselineTotal != null ? totalOffer - baselineTotal : null;
 
   const setRet = (stream, v) => setRetention(r => ({ ...r, [stream]: v }));
-  // "Apply to all" only touches streams the user can actually edit — leave FL at 0 when locked.
+  // "Apply to all" only touches streams the user can actually edit — leave FL at 0 when locked, U14/U6 always at 0.
   const setAllRet = (v) => setRetention(r => flsTopSlice
-    ? { firstLevel: v, hop: v, sia: v, careplus: v }
-    : { firstLevel: r.firstLevel, hop: v, sia: v, careplus: v });
-  const resetRet = () => { setRetention({ firstLevel: 0, hop: 0, sia: 0, careplus: 0 }); pushToast({ msg: 'Pass-through reset to 100%' }); };
+    ? { firstLevel: v, u14: 0, u6: 0, contingent: v, hop: v, sia: v, careplus: v }
+    : { firstLevel: r.firstLevel, u14: 0, u6: 0, contingent: v, hop: v, sia: v, careplus: v });
+  const resetRet = () => { setRetention({ firstLevel: 0, u14: 0, u6: 0, contingent: 0, hop: 0, sia: 0, careplus: 0 }); pushToast({ msg: 'Pass-through reset to 100%' }); };
 
   // Master slider average reflects only the editable streams.
   const masterRet = flsTopSlice
@@ -637,18 +634,18 @@ function ResultsPane({ practice, result, retention, streamRetained, streamOffer,
           <div style={{ fontSize: 11.5, color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 10 }}>
             Revenue composition
           </div>
-          <StackedBar items={STREAM_KEYS.map(k => ({
+          <StackedBar items={STREAM_KEYS.filter(k => result.streams[k].total > 0).map(k => ({
             label: STREAM_LABELS[k], value: result.streams[k].total, color: STREAM_COLORS[k],
           }))} height={10} showLabels/>
         </div>
       </div>
 
-      {/* Stream cards grid */}
+      {/* Stream cards grid — hide streams with $0 (typically the inactive zero-fees scheme). */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }}>
-        {STREAM_KEYS.map(k => (
+        {STREAM_KEYS.filter(k => result.streams[k].total > 0).map(k => (
           <StreamCard key={k}
             streamKey={k} stream={result.streams[k]}
-            retention={retention[k]} retained={streamRetained[k]} offer={streamOffer[k]}
+            retention={retention[k] || 0} retained={streamRetained[k]} offer={streamOffer[k]}
             total={result.grandTotal}
             baseline={practice.baseline?.[k]}
             expanded={!!expanded[k]} onToggle={() => setExpanded(e => ({ ...e, [k]: !e[k] }))}
@@ -665,28 +662,33 @@ function ResultsPane({ practice, result, retention, streamRetained, streamOffer,
             <span className="sub" style={{ marginLeft: 'auto' }}>Per stream — offer to practice</span>
           </div>
           <div className="card-body" style={{ padding: '14px 16px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
-              {STREAM_KEYS.map(k => {
-                const base = practice.baseline?.[k] || 0;
-                const delta = streamOffer[k] - base;
-                const pos = delta >= 0;
-                return (
-                  <div key={k} style={{ paddingLeft: 12, borderLeft: `3px solid ${STREAM_COLORS[k]}` }}>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}>{STREAM_LABELS[k]}</div>
-                    <div style={{
-                      fontSize: 18, fontWeight: 700,
-                      color: Math.abs(delta) < 100 ? 'var(--text-dim)' : (pos ? 'var(--pos)' : 'var(--neg)'),
-                      letterSpacing: '-0.01em',
-                    }} className="num">
-                      {Math.abs(delta) < 100 ? '≈ 0' : window.fmtCurrencySigned(delta, { compact: true })}
-                    </div>
-                    <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }} className="num">
-                      offer {window.fmtCurrency(streamOffer[k], { compact: true })} · current {window.fmtCurrency(base, { compact: true })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            {(() => {
+              const visibleKeys = STREAM_KEYS.filter(k => result.streams[k].total > 0 || (practice.baseline?.[k] || 0) > 0);
+              return (
+                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${visibleKeys.length}, 1fr)`, gap: 16 }}>
+                  {visibleKeys.map(k => {
+                    const base = practice.baseline?.[k] || 0;
+                    const delta = streamOffer[k] - base;
+                    const pos = delta >= 0;
+                    return (
+                      <div key={k} style={{ paddingLeft: 12, borderLeft: `3px solid ${STREAM_COLORS[k]}` }}>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}>{STREAM_LABELS[k]}</div>
+                        <div style={{
+                          fontSize: 18, fontWeight: 700,
+                          color: Math.abs(delta) < 100 ? 'var(--text-dim)' : (pos ? 'var(--pos)' : 'var(--neg)'),
+                          letterSpacing: '-0.01em',
+                        }} className="num">
+                          {Math.abs(delta) < 100 ? '≈ 0' : window.fmtCurrencySigned(delta, { compact: true })}
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }} className="num">
+                          offer {window.fmtCurrency(streamOffer[k], { compact: true })} · current {window.fmtCurrency(base, { compact: true })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
@@ -771,7 +773,7 @@ function BreakdownSidebar({ result, streamOffer, retention }) {
       <div className="card-body" style={{ padding: '14px 16px' }}>
         <table className="table" style={{ fontSize: 13 }}>
           <tbody>
-            {STREAM_KEYS.map(k => (
+            {STREAM_KEYS.filter(k => result.streams[k].total > 0).map(k => (
               <tr key={k}>
                 <td style={{ padding: '8px 0', border: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ width: 8, height: 8, borderRadius: 2, background: STREAM_COLORS[k] }}/>

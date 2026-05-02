@@ -15,6 +15,30 @@ const STREAM_TABLES = {
     ],
     extra: () => <CscTopupTable/>,
   },
+  u14: {
+    data: () => window.U14_RATES,
+    columns: [
+      { key: 'ageBand', label: 'Age band' },
+      { key: 'gender',  label: 'Sex', fmt: (v) => v === 'F' ? 'Female' : 'Male' },
+      { key: 'rate',    label: 'Rate ($/yr)', num: true },
+    ],
+  },
+  u6: {
+    data: () => window.U6_RATES,
+    columns: [
+      { key: 'ageBand', label: 'Age band' },
+      { key: 'gender',  label: 'Sex', fmt: (v) => v === 'F' ? 'Female' : 'Male' },
+      { key: 'rate',    label: 'Rate ($/yr)', num: true },
+    ],
+  },
+  contingent: {
+    data: () => window.CONTINGENT_RATES,
+    columns: [
+      { key: 'ageBand', label: 'Age band' },
+      { key: 'gender',  label: 'Sex', fmt: (v) => v === 'F' ? 'Female' : 'Male' },
+      { key: 'rate',    label: 'Rate ($/yr)', num: true },
+    ],
+  },
   hop: {
     data: () => window.HOP_RATES,
     columns: [

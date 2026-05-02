@@ -66,8 +66,8 @@ Pulled from https://thepho.org.nz/ (CSS bundle, April 2026):
 - `cscCount`: Community Services Card holders.
 
 **Engine output** (per practice, annualised):
-- Four stream totals: `First-Level Capitation`, `Health Promotion (HOP)`, `Services to Improve Access (SIA)`, `CarePlus`.
-- Each stream has: amount $, rate-table effective date, source reference.
+- Stream totals across the streams listed below in "Streams modelled".
+- Each stream has: amount $, rate-table effective date, source reference (typically a link to the relevant section of the Te Whatu Ora capitation page).
 - Combined total.
 
 **Scenario state** (UI layer, persisted locally):
@@ -101,6 +101,7 @@ Pulled from https://thepho.org.nz/ (CSS bundle, April 2026):
 **Data inputs:**
 - Practice name (text).
 - Practice type (Access / Non-Access) — radio or segmented toggle. Tooltip explains VLCA.
+- Zero-fees scheme (Under-14s / Under-6s) — segmented toggle, defaults to Under-14s.
 - Age-band counts — six numeric inputs, shown as a horizontal strip.
 - Total patient count — **derived and shown prominently** (sum of age bands).
 - Female count (number or % slider; defaults to 50%).
@@ -129,12 +130,12 @@ Pulled from https://thepho.org.nz/ (CSS bundle, April 2026):
 **Left pane — Inputs**
 - Practice selector (dropdown, shows current practice).
 - All marginal inputs from #2, editable inline.
-- Five **retention sliders**, one per stream — `First-Level`, `HOP`, `SIA`, `CarePlus`, plus an **apply to all** master. Sliders 0-100%, default 0%. Show current % prominently next to the slider.
+- **Retention sliders** for the four user-tunable streams — `First-Level`, `HOP`, `SIA`, `CarePlus`, plus an **apply to all** master. Sliders 0-100%, default 0%. Zero-fees streams (U14 / U6) are locked at full pass-through; contingent retention is governed by the master slider.
 - "Reset retention" button.
 
 **Right pane — Results (live)**
 - **Top summary tile:** Annual PHO revenue / Annual retained / Annual offer to practice / Variance vs current PHO.
-- **Four stream cards**, one each for First-Level, HOP, SIA, CarePlus:
+- **Stream cards** — one per non-zero stream from the list above (the inactive zero-fees scheme is hidden):
   - Stream name + effective date (small) + source link.
   - PHO revenue ($, annual + "/mo").
   - Retention % (echoes slider).
@@ -231,10 +232,22 @@ Pulled from https://thepho.org.nz/ (CSS bundle, April 2026):
 ## Out of scope (v1)
 
 - Per-patient rosters (input is aggregated demographics only).
-- Fee-for-service, Under-6s supplement, Contingent Capitation, SLM, Immunisation Incentive (capitation + flexible funding only, four streams).
+- Fee-for-service, SLM, Immunisation Incentive, rural adjustments — out of scope for v1.
 - Multi-user collaboration, cloud sync, authentication.
 - Historical scenario versioning beyond per-scenario edit history.
 - Rate-table editing by end users (read-only in v1; rates are versioned JSON shipped with the app).
+
+## Streams modelled
+
+The engine outputs the following streams, all sourced from the official Te Whatu Ora capitation rates page (https://www.tewhatuora.govt.nz/for-health-providers/primary-care-sector/capitation-rates):
+
+- **First-Level Services** (s.1) — base capitation by age × gender × HUHC × practice type, with CSC top-up (s.9) for Non-Access practices.
+- **Zero Fees Under-14s (ZF14)** (s.11) — per-patient capitation for enrolled patients aged 0-13. Most modern practices are on this scheme.
+- **Zero Fees Under-6s (ZF6)** (s.10) — alternative scheme to ZF14, mutually exclusive. Per-practice toggle in the editor; defaults to ZF14.
+- **Contingent Capitation** (s.13) — per-patient by age × gender. Te Whatu Ora pays this gross to the PHO; ProCare and other PHOs may retain a portion as a performance link.
+- **Health Promotion (HOP)** (s.4) — by ethnicity × deprivation, HUHC excluded.
+- **Services to Improve Access (SIA)** (s.5) — by age × gender × ethnicity × deprivation, HUHC excluded.
+- **CarePlus** — thePHO schedule (per the xlsx in `examples/`), by age × gender × deprivation × ethnicity.
 
 ## Technical notes for the designer
 

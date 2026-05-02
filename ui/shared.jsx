@@ -141,13 +141,19 @@ function Sparkline({ value, max, color = 'var(--accent)' }) {
 // Stream colors (consistent across app)
 const STREAM_COLORS = {
   firstLevel: 'var(--red)',
+  u14: 'var(--purple, #8b5cf6)',
+  u6: 'var(--purple, #a78bfa)',
+  contingent: 'var(--teal, #14b8a6)',
   hop: 'var(--navy)',
   sia: 'var(--amber)',
   careplus: 'var(--mint)',
 };
-const STREAM_KEYS = ['firstLevel', 'hop', 'sia', 'careplus'];
+const STREAM_KEYS = ['firstLevel', 'u14', 'u6', 'contingent', 'hop', 'sia', 'careplus'];
 const STREAM_LABELS = {
   firstLevel: 'First-Level',
+  u14: 'Under-14s (ZF14)',
+  u6: 'Under-6s (ZF6)',
+  contingent: 'Contingent',
   hop: 'HOP',
   sia: 'SIA',
   careplus: 'CarePlus',
