@@ -66,6 +66,14 @@ function App() {
 
   const { toasts, push: pushToast } = window.useToasts();
 
+  // App version — runtime-fetched from Tauri so it can never drift from the bundle.
+  const [appVersion, setAppVersion] = React.useState(null);
+  React.useEffect(() => {
+    let cancelled = false;
+    window.ffApp?.getVersion?.().then(v => { if (!cancelled && v) setAppVersion(v); });
+    return () => { cancelled = true; };
+  }, []);
+
   // Update checker
   const [updateInfo, setUpdateInfo] = React.useState(null);    // persistent "there's an update"
   const [updateModalOpen, setUpdateModalOpen] = React.useState(false);
@@ -235,7 +243,7 @@ function App() {
           <div style={{ fontSize: 11, color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: 6 }}>
             <ICONS.Drop size={12}/> Local-only · IndexedDB
           </div>
-          <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>v0.4.2 · Rates eff. 1 Jul 2025</div>
+          <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>{appVersion ? `v${appVersion}` : 'desktop build'} · Rates eff. 1 Jul 2025</div>
           {updateInfo ? (
             <button
               onClick={() => setUpdateModalOpen(true)}
