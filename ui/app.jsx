@@ -58,6 +58,8 @@ function App() {
   });
   const [savingState, setSavingState] = React.useState('idle'); // idle, saving, saved
   const [tweaksOpen, setTweaksOpen] = React.useState(false);
+  const [helpOpen, setHelpOpen] = React.useState(false);
+  React.useEffect(() => { window.openTweaks = () => setTweaksOpen(true); }, []);
   const [tweaks, setTweaks] = React.useState(() => {
     const defaults = { theme: 'light', layout: 'twoPane', density: 'default', flsTopSlice: false };
     try { return { ...defaults, ...(JSON.parse(localStorage.getItem('ffcalc:v1:tweaks')) || {}) }; }
@@ -276,6 +278,9 @@ function App() {
             <span className="dot"/>
             {savingState === 'saving' ? 'Saving…' : 'All changes saved'}
           </span>
+          <button className="btn ghost sm icon" onClick={() => setHelpOpen(v => !v)} title="Help for this screen">
+            <ICONS.Help size={15}/>
+          </button>
           <button className="btn ghost sm icon" onClick={() => setTweaksOpen(v => !v)} title="Settings">
             <ICONS.Settings size={15}/>
           </button>
@@ -295,8 +300,10 @@ function App() {
       </div>
 
       {/* Tweaks panel */}
-      {tweaksOpen && <TweaksPanel tweaks={tweaks} setTweaks={setTweaks} setState={setState} pushToast={pushToast}
-        onCheckUpdate={() => runUpdateCheck(false)} updateStatus={updateStatus}/>}
+      {tweaksOpen && <TweaksPanel tweaks={tweaks} setTweaks={setTweaks} setState={setState} pushToast={pushToast}/>}
+
+      {/* Help panel */}
+      {helpOpen && <HelpPanel routeName={routeName} onClose={() => setHelpOpen(false)}/>}
 
       {/* Update-available modal */}
       {updateInfo && updateModalOpen && (
@@ -360,7 +367,51 @@ function NavItem({ icon, active, onClick, count, children }) {
   );
 }
 
-function TweaksPanel({ tweaks, setTweaks, setState, pushToast, onCheckUpdate, updateStatus }) {
+function HelpPanel({ routeName, onClose }) {
+  const ROUTE_TITLES = {
+    register: 'Register', editor: 'Editor', workbench: 'Workbench',
+    compare: 'Comparison', network: 'Network', rates: 'Rates', data: 'Import & Export',
+  };
+  const body = (window.HELP || {})[routeName] || '';
+  const title = ROUTE_TITLES[routeName] || 'Help';
+
+  React.useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return (
+    <>
+      <div onClick={onClose} style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.18)', zIndex: 39,
+      }}/>
+      <aside style={{
+        position: 'fixed', top: 0, right: 0, bottom: 0, width: 440, maxWidth: '92vw',
+        background: 'var(--surface)', borderLeft: '1px solid var(--border)',
+        boxShadow: 'var(--shadow-lg)', zIndex: 40, display: 'flex', flexDirection: 'column',
+      }}>
+        <div style={{
+          padding: '14px 18px', borderBottom: '1px solid var(--border)',
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <ICONS.Help size={16}/>
+          <h2 style={{ fontSize: 14, fontWeight: 600, flex: 1, margin: 0 }}>Help · {title}</h2>
+          <button className="btn ghost sm icon" onClick={onClose} title="Close (Esc)">
+            <ICONS.X size={14}/>
+          </button>
+        </div>
+        <div style={{ padding: '8px 20px 24px', overflowY: 'auto', fontSize: 13.5, color: 'var(--text)', lineHeight: 1.55 }}>
+          {body ? renderMarkdown(body) : (
+            <p style={{ color: 'var(--text-muted)' }}>No help content for this screen yet.</p>
+          )}
+        </div>
+      </aside>
+    </>
+  );
+}
+
+function TweaksPanel({ tweaks, setTweaks, setState, pushToast }) {
   const [confirmReset, setConfirmReset] = React.useState(false);
   const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
     "theme": "light",
@@ -428,19 +479,11 @@ function TweaksPanel({ tweaks, setTweaks, setState, pushToast, onCheckUpdate, up
             Allow First-Level top-slice
             <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>
               Off: First-Level capitation always passes 100% to practices (default).
-              On: shows a retention slider for First-Level alongside the others.
+              On: shows a First-Level pass-through slider alongside the others.
             </div>
           </span>
         </label>
       </TweakGroup>
-
-      <button
-        onClick={onCheckUpdate}
-        disabled={updateStatus === 'checking' || !window.ffUpdate?.inTauri}
-        title={!window.ffUpdate?.inTauri ? 'Only available in the desktop app' : ''}
-        className="btn sm" style={{ width: '100%', marginTop: 8 }}>
-        {updateStatus === 'checking' ? 'Checking\u2026' : 'Check for updates'}
-      </button>
 
       <button
         onClick={() => setConfirmReset(true)}

@@ -18,7 +18,8 @@ JSX_ORDER=(icons.jsx state.jsx shared.jsx register.jsx editor.jsx workbench.jsx 
 COMPILED=$(mktemp --suffix=.js)
 UPDATER=$(mktemp --suffix=.js)
 PDF=$(mktemp --suffix=.js)
-trap 'rm -f "$COMPILED" "$UPDATER" "$PDF"' EXIT
+HELP=$(mktemp --suffix=.js)
+trap 'rm -f "$COMPILED" "$UPDATER" "$PDF" "$HELP"' EXIT
 
 for f in "${JSX_ORDER[@]}"; do
   # Each JSX file compiles to its own IIFE so top-level consts don't collide.
@@ -32,6 +33,18 @@ done > "$COMPILED"
 
 # Bundle jsPDF + autotable, exposed as window.ffPDF.
 "$ESBUILD" pdf-entry.js --bundle --format=iife --minify --platform=browser > "$PDF"
+
+# Embed help markdown files as window.HELP = { route: "..." } using Node for safe JSON encoding.
+node -e '
+  const fs = require("fs"), path = require("path");
+  const dir = "help";
+  const out = {};
+  for (const f of fs.readdirSync(dir).sort()) {
+    if (!f.endsWith(".md")) continue;
+    out[f.replace(/\.md$/, "")] = fs.readFileSync(path.join(dir, f), "utf8");
+  }
+  process.stdout.write("window.HELP = " + JSON.stringify(out) + ";");
+' > "$HELP"
 
 {
 cat <<'HTML_HEAD'
@@ -75,6 +88,9 @@ cat "$UPDATER"
 echo
 echo '/* PDF export (jsPDF + autotable, exposed as window.ffPDF) */'
 cat "$PDF"
+echo
+echo '/* Help content (markdown per route, exposed as window.HELP) */'
+cat "$HELP"
 echo
 echo '/* FFCalc UI — JSX pre-compiled with esbuild */'
 cat "$COMPILED"

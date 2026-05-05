@@ -35,6 +35,7 @@ ICONS.Download = makeIcon(<><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d
 ICONS.Upload = makeIcon(<><path d="M12 19V7"/><path d="M7 12l5-5 5 5"/><path d="M4 19h16"/></>);
 ICONS.Save = makeIcon(<><path d="M5 3h11l3 3v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v6h9V3"/></>);
 ICONS.Info = makeIcon(<><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.01"/></>);
+ICONS.Help = makeIcon(<><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 4M12 17v.01"/></>);
 ICONS.Edit = makeIcon(<><path d="M11 4H5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2v-6"/><path d="M19 3l2 2-11 11H8v-2z"/></>);
 ICONS.Arrow = makeIcon(<><path d="M5 12h14M13 5l7 7-7 7"/></>);
 ICONS.ArrowBack = makeIcon(<><path d="M19 12H5M11 5l-7 7 7 7"/></>);

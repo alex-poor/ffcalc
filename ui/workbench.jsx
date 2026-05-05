@@ -268,10 +268,6 @@ function Workbench({ practiceId, state, setState, onBack, onCompare, onEditPract
           <h1 style={{ fontSize: 22, fontWeight: 600, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 12 }}>
             {practice.name}
             <TypeChip type={practice.practiceType}/>
-            <button className="btn ghost sm" onClick={() => onEditPractice?.(practice.id)} title="Edit demographics & baseline"
-              style={{ fontSize: 12, padding: '3px 8px', gap: 4 }}>
-              <ICONS.Edit size={12}/> Edit practice
-            </button>
           </h1>
           <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>
             Scenario Workbench · {window.fmtNumber(result.totalPatients)} enrolled
@@ -279,8 +275,9 @@ function Workbench({ practiceId, state, setState, onBack, onCompare, onEditPract
               <> · viewing <b style={{ color: 'var(--text-strong)' }}>{scenarios.find(s => s.id === selectedScenarioId).name}</b></>}
           </div>
         </div>
+        <Button onClick={() => onEditPractice?.(practice.id)} icon={<ICONS.Edit/>}>Edit practice</Button>
         <Button onClick={() => setSaveOpen(true)} icon={<ICONS.Save/>}>Save as scenario</Button>
-        <Button onClick={onCompare} icon={<ICONS.Compare/>}>Add to comparison</Button>
+        <Button onClick={onCompare} icon={<ICONS.Compare/>}>Open comparison</Button>
         <Button onClick={() => pushToast({msg: 'Exported scenario CSV'})} icon={<ICONS.Download/>}>Export</Button>
       </div>
 
@@ -423,11 +420,11 @@ function FirstLevelLockedRow() {
       </div>
       <div style={{ fontSize: 11.5, color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: 6 }}>
         Locked at 100% pass-through
-        <span title="Enable First-Level top-slice in Tweaks → Advanced to edit." style={{ cursor: 'help' }}>
-          <ICONS.Info size={11}/>
-        </span>
+        <button onClick={() => window.openTweaks?.()} className="btn ghost sm" style={{ fontSize: 11, padding: '1px 6px', height: 'auto' }} title="Enable First-Level top-slice in settings">
+          Unlock
+        </button>
       </div>
-      <div className="value">100% <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: 11 }}>pass</span></div>
+      <div className="value">100% <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: 11 }}>pass-through</span></div>
     </div>
   );
 }
@@ -446,7 +443,7 @@ function SliderRow({ label, retention, onChange, color, master }) {
         <input type="range" min="0" max="100" step="1" value={passThrough} onChange={e => handle(parseInt(e.target.value, 10))}/>
       </div>
       <div className="value" title={`PHO retains ${retention}%`}>
-        {passThrough}% <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: 11 }}>pass</span>
+        {passThrough}% <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: 11 }}>pass-through</span>
       </div>
     </div>
   );
@@ -725,7 +722,7 @@ function StreamCard({ streamKey, stream, retention, retained, offer, total, base
           </div>
         </div>
         <div>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Offer to practice · {100 - retention}% pass</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Offer to practice · {100 - retention}% pass-through</div>
           <div style={{ fontSize: density === 'tight' ? 18 : 22, fontWeight: 700, color: 'var(--accent)', letterSpacing: '-0.01em' }} className="num stream-num">
             {window.fmtCurrency(offer, { compact: true })}
           </div>

@@ -96,7 +96,7 @@ function PracticeRegister({ state, setState, onOpenPractice, onEditPractice, onA
                 <td className="num"><Money value={total}/></td>
                 <td className="num" style={{ color: 'var(--text-strong)', fontWeight: 500 }}>
                   <Money value={offer}/>
-                  <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: 12, marginLeft: 4 }}>@ 90% pass</span>
+                  <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: 12, marginLeft: 4 }}>@ 90% pass-through</span>
                 </td>
                 <td className="num">
                   {variance != null ? <VarianceChip value={variance}/> : <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>no baseline</span>}

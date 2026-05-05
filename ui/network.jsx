@@ -365,11 +365,11 @@ function FirstLevelLockedRow() {
       </div>
       <div style={{ fontSize: 11.5, color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: 6 }}>
         Locked at 100% pass-through
-        <span title="Enable First-Level top-slice in Tweaks → Advanced to edit." style={{ cursor: 'help' }}>
-          <ICONS.Info size={11}/>
-        </span>
+        <button onClick={() => window.openTweaks?.()} className="btn ghost sm" style={{ fontSize: 11, padding: '1px 6px', height: 'auto' }} title="Enable First-Level top-slice in settings">
+          Unlock
+        </button>
       </div>
-      <div className="value">100% <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: 11 }}>pass</span></div>
+      <div className="value">100% <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: 11 }}>pass-through</span></div>
     </div>
   );
 }
@@ -387,7 +387,7 @@ function SliderRow({ label, retention, onChange, color, master }) {
         <input type="range" min="0" max="100" step="1" value={passThrough} onChange={e => handle(parseInt(e.target.value, 10))}/>
       </div>
       <div className="value" title={`PHO retains ${retention}%`}>
-        {passThrough}% <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: 11 }}>pass</span>
+        {passThrough}% <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: 11 }}>pass-through</span>
       </div>
     </div>
   );
