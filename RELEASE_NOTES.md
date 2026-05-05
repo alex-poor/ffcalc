@@ -1,28 +1,26 @@
-# FFCalc v0.5.0
+# FFCalc v0.6.0
+
+A UX-focused release. No engine changes — same numbers, friendlier path through them.
 
 ## Added
 
-- **Three new funding streams** wired into the engine, all sourced from the official Te Whatu Ora capitation rates page:
-  - **Zero Fees for Under-14s (ZF14)** — section 11.
-  - **Zero Fees for Under-6s (ZF6)** — section 10. Alternative to ZF14; toggle in the practice editor (defaults to U14).
-  - **Contingent Capitation** — section 13. Te Whatu Ora pays this gross to the PHO; ProCare and other PHOs may retain a portion as a performance link.
-- **Practice editor** now has a Zero-fees scheme selector (Under-14s / Under-6s) alongside the practice-type toggle.
-- **Rate Reference screen** picks up U14, U6, and Contingent tables, each with a clickable "View source" link to the Te Whatu Ora section the rates came from.
-- **Hillside Medical Centre** added as a second reconciliation fixture in `tests/reconcile.hillside.test.ts`.
+- **Per-screen help panel.** New Help button (?) in the topbar opens a context-aware side panel with concise guidance for whichever screen you're on (Register, Editor, Workbench, Comparison, Network, Rates, Import & Export). All content embedded in the bundle — works fully offline.
+- **First-Level "Unlock" button.** When First-Level pass-through is locked at 100% (the default), the locked row now has a one-click Unlock button that opens Settings → Advanced. No more hunting for the toggle.
 
-## Reconciliation
+## Changed
 
-Validated against ProCare reports (April 2026):
+- **Editor restructured around the marginals/joint toggle.** Previously the age-band strip lived in its own card above the toggle, so it was visible (and editable) even in joint mode where the engine ignores it — two ways to enter the same number, only one of which the engine read. The age strip now lives inside the Marginal-totals branch only. Switching between modes is lossless: joint cells auto-seed from marginals; marginals are recomputed from cells when you switch back.
+- **Workbench header tidied.** "Edit practice" moved out of the page title into the right-side button row alongside Save / Open comparison / Export.
+- **"Add to comparison" → "Open comparison"** so the label matches what the button does (navigate, not append).
+- **Editor save buttons collapsed.** New practice → "Save & open workbench"; existing practice → "Save". One primary action per state.
+- **Tweaks panel decluttered.** "Check for updates" duplicate removed — the sidebar footer is now the single source.
+- **Terminology standardised on "pass-through"** in user-visible labels and readouts, with "PHO retains X%" tooltips preserved as the inverse view.
+- **Topbar icons resized** so Help and Settings sit at the same height as the "All changes saved" pill — discoverable, not lost in the corner.
 
-| Stream | Hillside Δ | Blockhouse Bay Δ |
-|---|---|---|
-| First-Level + CSC | −0.4% | −1.4% |
-| U14 | −0.3% | +0.0% |
-| Contingent (gross) | −0.5% | +14.9% (PHO retention) |
+## Fixed
 
-The Blockhouse Bay contingent gap is **not an engine bug** — engine output is the TWO→PHO gross figure; the practice statement shows receipts net of ProCare's "performance-linked" retention.
+- **Sidebar version string is now read at runtime from Tauri.** It was a hardcoded literal that didn't get bumped on the 0.5.0 release, so 0.5.0 installs displayed "v0.4.2". From this release onward the displayed version always matches the bundle.
 
 ## Notes
 
-- Both Hillside and Blockhouse Bay reconcile to the U14 scheme. Note that Karo's older "Under-6 capitation supplement" column label is legacy — many practices on it actually receive U14 amounts.
-- The inactive zero-fees scheme is hidden from per-practice views (workbench, comparison, vs-current PDF) so the UI stays compact.
+- Users currently running 0.5.0 will see "v0.4.2" until they update to this release — the displayed string is baked into the 0.5.0 bundle and can't be fixed retroactively.
