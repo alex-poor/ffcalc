@@ -66,7 +66,9 @@ function PracticeEditor({ practiceId, state, setState, onSave, onOpenWorkbench, 
   });
   const [showBaseline, setShowBaseline] = React.useState(!!draft.baseline);
 
-  const total = AGE_BANDS.reduce((s, b) => s + (draft.ageCounts[b] || 0), 0);
+  const marginalTotal = AGE_BANDS.reduce((s, b) => s + (draft.ageCounts[b] || 0), 0);
+  const jointTotalCount = Object.values(draft.jointCounts || {}).reduce((s, v) => s + (v || 0), 0);
+  const total = draft.useJoint ? jointTotalCount : marginalTotal;
   const femaleCount = draft.femaleCount ?? total * 0.5;
   const femalePct = total > 0 ? femaleCount / total : 0.5;
 
@@ -81,7 +83,20 @@ function PracticeEditor({ practiceId, state, setState, onSave, onOpenWorkbench, 
     const seed = Object.keys(joint).length > 0 ? joint : seedJointFromMarginals(draft.ageCounts, draft.femaleCount, draft.maoriPacificCount, draft.dep9to10Count);
     update({ useJoint: true, jointCounts: seed });
   };
-  const disableJoint = () => update({ useJoint: false });
+  const disableJoint = () => {
+    const j = draft.jointCounts || {};
+    const hasCells = Object.values(j).some(v => v > 0);
+    if (!hasCells) { update({ useJoint: false }); return; }
+    const ageCounts = {};
+    for (const ab of AGE_BANDS) ageCounts[ab] = sumJointForBand(j, ab);
+    update({
+      useJoint: false,
+      ageCounts,
+      femaleCount: sumJointByDim(j, (ab, g) => g === 'F'),
+      maoriPacificCount: sumJointByDim(j, (ab, g, eth) => eth === 'maori-pacific'),
+      dep9to10Count: sumJointByDim(j, (ab, g, eth, dep) => dep === 'dep9-10'),
+    });
+  };
   const reseedJoint = () => {
     update({ jointCounts: seedJointFromMarginals(draft.ageCounts, draft.femaleCount, draft.maoriPacificCount, draft.dep9to10Count) });
     pushToast({ msg: 'Cross-tab reseeded from marginals' });
@@ -144,10 +159,13 @@ function PracticeEditor({ practiceId, state, setState, onSave, onOpenWorkbench, 
             Define the practice's enrolled-patient demographics. All figures annual, aggregated.
           </div>
         </div>
-        <Button onClick={() => save(false)} disabled={hasErrors} icon={<ICONS.Save/>}>Save</Button>
-        <Button variant="primary" onClick={() => save(true)} disabled={hasErrors}>
-          Save & open workbench<ICONS.Arrow size={15}/>
-        </Button>
+        {isNew ? (
+          <Button variant="primary" onClick={() => save(true)} disabled={hasErrors}>
+            Save & open workbench<ICONS.Arrow size={15}/>
+          </Button>
+        ) : (
+          <Button variant="primary" onClick={() => save(false)} disabled={hasErrors} icon={<ICONS.Save/>}>Save</Button>
+        )}
       </div>
 
       <div className="card" style={{ marginBottom: 20 }}>
@@ -185,40 +203,7 @@ function PracticeEditor({ practiceId, state, setState, onSave, onOpenWorkbench, 
 
       <div className="card" style={{ marginBottom: 20 }}>
         <div className="card-head">
-          <h3>Age-band enrolment</h3>
-          <span className="sub" style={{ marginLeft: 'auto' }}>Paste a row from Karo — tabs or commas will split into bands</span>
-        </div>
-        <div className="card-body">
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 10 }} onPaste={onAgePaste}>
-            {AGE_BANDS.map(b => (
-              <div key={b} className="field">
-                <label style={{ textAlign: 'center', color: 'var(--text-muted)' }}>{b}</label>
-                <input className="input num" type="number" min="0"
-                  value={draft.ageCounts[b] || ''}
-                  onChange={e => updateAge(b, parseInt(e.target.value, 10))}
-                  placeholder="0"/>
-              </div>
-            ))}
-          </div>
-          <div style={{
-            marginTop: 18, padding: '14px 18px',
-            background: 'var(--pink-soft)', borderRadius: 'var(--r)',
-            display: 'flex', alignItems: 'baseline', gap: 18,
-          }}>
-            <div style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 500 }}>Total enrolled</div>
-            <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--accent)', letterSpacing: '-0.01em' }} className="num">
-              {window.fmtNumber(total)}
-            </div>
-            <div style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-muted)' }}>
-              Auto-computed · used as denominator for gender & ethnicity splits
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="card" style={{ marginBottom: 20 }}>
-        <div className="card-head">
-          <h3>Demographic breakdown</h3>
+          <h3>Enrolment & demographics</h3>
           <div className="seg" style={{ marginLeft: 'auto' }}>
             <button className={!draft.useJoint ? 'on' : ''} onClick={disableJoint}>Marginal totals</button>
             <button className={draft.useJoint ? 'on' : ''} onClick={enableJoint}>Cross-tab (joint)</button>
@@ -226,48 +211,81 @@ function PracticeEditor({ practiceId, state, setState, onSave, onOpenWorkbench, 
         </div>
         <div className="card-body" style={{ padding: '14px 18px' }}>
           {!draft.useJoint ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 18 }}>
-              <div className="field">
-                <label>Female count <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>(optional — defaults 50%)</span></label>
-                <input className={'input num' + (errors.female ? ' error' : warnings.female ? ' warn' : '')}
-                  type="number" min="0" placeholder={total ? String(Math.round(total * 0.5)) : '—'}
-                  value={draft.femaleCount ?? ''} onChange={e => update({ femaleCount: e.target.value === '' ? null : parseInt(e.target.value, 10) })}/>
-                {errors.female && <div className="hint error">{errors.female}</div>}
-                {!errors.female && warnings.female && <div className="hint warn">⚠ {warnings.female}</div>}
-                {!errors.female && !warnings.female && total > 0 && (
-                  <div className="hint">= {(femalePct * 100).toFixed(1)}% of enrolled</div>
-                )}
+            <>
+              <div style={{ marginBottom: 18 }}>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 500, marginBottom: 8, display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                  <span>Age-band enrolment</span>
+                  <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>· paste a row from Karo — tabs or commas will split</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 10 }} onPaste={onAgePaste}>
+                  {AGE_BANDS.map(b => (
+                    <div key={b} className="field">
+                      <label style={{ textAlign: 'center', color: 'var(--text-muted)' }}>{b}</label>
+                      <input className="input num" type="number" min="0"
+                        value={draft.ageCounts[b] || ''}
+                        onChange={e => updateAge(b, parseInt(e.target.value, 10))}
+                        placeholder="0"/>
+                    </div>
+                  ))}
+                </div>
+                <div style={{
+                  marginTop: 14, padding: '14px 18px',
+                  background: 'var(--pink-soft)', borderRadius: 'var(--r)',
+                  display: 'flex', alignItems: 'baseline', gap: 18,
+                }}>
+                  <div style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 500 }}>Total enrolled</div>
+                  <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--accent)', letterSpacing: '-0.01em' }} className="num">
+                    {window.fmtNumber(total)}
+                  </div>
+                  <div style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-muted)' }}>
+                    Auto-computed · used as denominator for gender & ethnicity splits
+                  </div>
+                </div>
               </div>
-              <div className="field">
-                <label>Māori + Pacific count</label>
-                <input className={'input num' + (errors.mp ? ' error' : '')}
-                  type="number" min="0"
-                  value={draft.maoriPacificCount || ''} onChange={e => update({ maoriPacificCount: parseInt(e.target.value, 10) || 0 })}/>
-                {errors.mp && <div className="hint error">{errors.mp}</div>}
-                {!errors.mp && total > 0 && <div className="hint">= {((draft.maoriPacificCount / total) * 100).toFixed(1)}% of enrolled</div>}
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 18 }}>
+                <div className="field">
+                  <label>Female count <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>(optional — defaults 50%)</span></label>
+                  <input className={'input num' + (errors.female ? ' error' : warnings.female ? ' warn' : '')}
+                    type="number" min="0" placeholder={total ? String(Math.round(total * 0.5)) : '—'}
+                    value={draft.femaleCount ?? ''} onChange={e => update({ femaleCount: e.target.value === '' ? null : parseInt(e.target.value, 10) })}/>
+                  {errors.female && <div className="hint error">{errors.female}</div>}
+                  {!errors.female && warnings.female && <div className="hint warn">⚠ {warnings.female}</div>}
+                  {!errors.female && !warnings.female && total > 0 && (
+                    <div className="hint">= {(femalePct * 100).toFixed(1)}% of enrolled</div>
+                  )}
+                </div>
+                <div className="field">
+                  <label>Māori + Pacific count</label>
+                  <input className={'input num' + (errors.mp ? ' error' : '')}
+                    type="number" min="0"
+                    value={draft.maoriPacificCount || ''} onChange={e => update({ maoriPacificCount: parseInt(e.target.value, 10) || 0 })}/>
+                  {errors.mp && <div className="hint error">{errors.mp}</div>}
+                  {!errors.mp && total > 0 && <div className="hint">= {((draft.maoriPacificCount / total) * 100).toFixed(1)}% of enrolled</div>}
+                </div>
+                <div className="field">
+                  <label>Quintile 5 (Dep 9-10) count</label>
+                  <input className={'input num' + (errors.dep ? ' error' : '')}
+                    type="number" min="0"
+                    value={draft.dep9to10Count || ''} onChange={e => update({ dep9to10Count: parseInt(e.target.value, 10) || 0 })}/>
+                  {errors.dep && <div className="hint error">{errors.dep}</div>}
+                </div>
+                <div className="field">
+                  <label>Community Services Card count</label>
+                  <input className={'input num' + (errors.csc ? ' error' : '')}
+                    type="number" min="0"
+                    value={draft.cscCount || ''} onChange={e => update({ cscCount: parseInt(e.target.value, 10) || 0 })}/>
+                  {errors.csc && <div className="hint error">{errors.csc}</div>}
+                </div>
+                <div className="field" style={{ gridColumn: '1 / -1' }}>
+                  <label>HUHC count <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>(optional)</span></label>
+                  <input className="input num" type="number" min="0" style={{ maxWidth: 240 }}
+                    value={draft.huhcCount ?? ''} onChange={e => update({ huhcCount: e.target.value === '' ? null : parseInt(e.target.value, 10) })}
+                    placeholder="—"/>
+                  <div className="hint">HUHC count is usually absent from Karo reports. Leave blank to treat as 0.</div>
+                </div>
               </div>
-              <div className="field">
-                <label>Quintile 5 (Dep 9-10) count</label>
-                <input className={'input num' + (errors.dep ? ' error' : '')}
-                  type="number" min="0"
-                  value={draft.dep9to10Count || ''} onChange={e => update({ dep9to10Count: parseInt(e.target.value, 10) || 0 })}/>
-                {errors.dep && <div className="hint error">{errors.dep}</div>}
-              </div>
-              <div className="field">
-                <label>Community Services Card count</label>
-                <input className={'input num' + (errors.csc ? ' error' : '')}
-                  type="number" min="0"
-                  value={draft.cscCount || ''} onChange={e => update({ cscCount: parseInt(e.target.value, 10) || 0 })}/>
-                {errors.csc && <div className="hint error">{errors.csc}</div>}
-              </div>
-              <div className="field" style={{ gridColumn: '1 / -1' }}>
-                <label>HUHC count <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>(optional)</span></label>
-                <input className="input num" type="number" min="0" style={{ maxWidth: 240 }}
-                  value={draft.huhcCount ?? ''} onChange={e => update({ huhcCount: e.target.value === '' ? null : parseInt(e.target.value, 10) })}
-                  placeholder="—"/>
-                <div className="hint">HUHC count is usually absent from Karo reports. Leave blank to treat as 0.</div>
-              </div>
-            </div>
+            </>
           ) : (
             <JointCrossTab
               draft={draft} total={total} joint={joint}
@@ -329,16 +347,12 @@ function JointCrossTab({ draft, total, joint, setJointCell, reseedJoint, errors,
         fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.55,
       }}>
         Each cell is the count of patients in that exact age × sex × ethnicity × deprivation combination.
-        SIA and CarePlus funding use the joint distribution directly when supplied.
-        Click <button className="btn ghost sm" style={{ padding: '2px 8px', fontSize: 11.5, display: 'inline-flex', marginLeft: 2, marginRight: 2 }} onClick={reseedJoint}>Reseed from marginals</button>
-        to repopulate from the marginal totals (assumes independence between dimensions).
+        SIA and CarePlus funding use the joint distribution directly. To start from a marginal-totals approximation, switch to <b>Marginal totals</b>, fill them in, then switch back — or click <button className="btn ghost sm" style={{ padding: '2px 8px', fontSize: 11.5, display: 'inline-flex', marginLeft: 2, marginRight: 2 }} onClick={reseedJoint}>Reseed from marginals</button> to rebuild cells from any marginals already entered.
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {AGE_BANDS.map(ab => {
           const bandSum = sumJointForBand(joint, ab);
-          const bandExpected = draft.ageCounts[ab] || 0;
-          const mismatch = Math.abs(bandSum - bandExpected) > 0.5;
           return (
             <div key={ab} style={{
               border: '1px solid var(--border)', borderRadius: 'var(--r)',
@@ -351,12 +365,7 @@ function JointCrossTab({ draft, total, joint, setJointCell, reseedJoint, errors,
               }}>
                 <b style={{ color: 'var(--text-strong)' }}>Age {ab}</b>
                 <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>
-                  cells sum: <b className="num" style={{ color: mismatch ? 'var(--amber-strong, #8a5a00)' : 'var(--text-strong)' }}>{window.fmtNumber(bandSum)}</b>
-                  {' · '}
-                  band total: <span className="num">{window.fmtNumber(bandExpected)}</span>
-                  {mismatch && <span style={{ color: 'var(--amber-strong, #8a5a00)', marginLeft: 8 }}>
-                    ⚠ differ by {window.fmtNumber(Math.abs(bandSum - bandExpected))}
-                  </span>}
+                  cells sum: <b className="num" style={{ color: 'var(--text-strong)' }}>{window.fmtNumber(bandSum)}</b>
                 </span>
               </div>
               <table className="table" style={{ fontSize: 12.5 }}>
@@ -400,7 +409,7 @@ function JointCrossTab({ draft, total, joint, setJointCell, reseedJoint, errors,
         background: 'var(--pink-soft)', borderRadius: 'var(--r)',
         display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16,
       }}>
-        <DerivedStat label="Joint total" value={jointTotal} sub={total !== jointTotal ? `age-band total: ${window.fmtNumber(total)}` : 'matches age bands'}/>
+        <DerivedStat label="Total enrolled" value={jointTotal} sub="sum of all cells"/>
         <DerivedStat label="Female" value={derivedFemale} sub={jointTotal ? `${((derivedFemale / jointTotal) * 100).toFixed(0)}%` : ''}/>
         <DerivedStat label="Māori + Pacific" value={derivedMP} sub={jointTotal ? `${((derivedMP / jointTotal) * 100).toFixed(0)}%` : ''}/>
         <DerivedStat label="Dep 9-10" value={derivedDep} sub={jointTotal ? `${((derivedDep / jointTotal) * 100).toFixed(0)}%` : ''}/>
