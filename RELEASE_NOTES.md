@@ -1,26 +1,13 @@
-# FFCalc v0.6.0
+# FFCalc v0.7.0
 
-A UX-focused release. No engine changes — same numbers, friendlier path through them.
+## Pricing policy
 
-## Added
+- **Contingent Capitation is now fixed at 100% pass-through.** thePHO passes through every dollar of Contingent Capitation that Te Whatu Ora pays, matching the existing treatment of First-Level, U14, and U6. The Contingent retention slider is removed everywhere it appeared, and any retention value carried in saved scenarios from earlier releases is overridden to 0% at compute time so legacy data doesn't silently re-introduce retention. Other PHOs (ProCare, Pinnacle) treat this as a "performance-linked" line and retain a portion; thePHO does not.
 
-- **Per-screen help panel.** New Help button (?) in the topbar opens a context-aware side panel with concise guidance for whichever screen you're on (Register, Editor, Workbench, Comparison, Network, Rates, Import & Export). All content embedded in the bundle — works fully offline.
-- **First-Level "Unlock" button.** When First-Level pass-through is locked at 100% (the default), the locked row now has a one-click Unlock button that opens Settings → Advanced. No more hunting for the toggle.
+## Reconciliation
 
-## Changed
-
-- **Editor restructured around the marginals/joint toggle.** Previously the age-band strip lived in its own card above the toggle, so it was visible (and editable) even in joint mode where the engine ignores it — two ways to enter the same number, only one of which the engine read. The age strip now lives inside the Marginal-totals branch only. Switching between modes is lossless: joint cells auto-seed from marginals; marginals are recomputed from cells when you switch back.
-- **Workbench header tidied.** "Edit practice" moved out of the page title into the right-side button row alongside Save / Open comparison / Export.
-- **"Add to comparison" → "Open comparison"** so the label matches what the button does (navigate, not append).
-- **Editor save buttons collapsed.** New practice → "Save & open workbench"; existing practice → "Save". One primary action per state.
-- **Tweaks panel decluttered.** "Check for updates" duplicate removed — the sidebar footer is now the single source.
-- **Terminology standardised on "pass-through"** in user-visible labels and readouts, with "PHO retains X%" tooltips preserved as the inverse view.
-- **Topbar icons resized** so Help and Settings sit at the same height as the "All changes saved" pill — discoverable, not lost in the corner.
-
-## Fixed
-
-- **Sidebar version string is now read at runtime from Tauri.** It was a hardcoded literal that didn't get bumped on the 0.5.0 release, so 0.5.0 installs displayed "v0.4.2". From this release onward the displayed version always matches the bundle.
+- **Flagstaff Medical Centre (Pinnacle PHO) added as a third reconciliation fixture** in `tests/reconcile.flagstaff.test.ts`. With exact joint cell counts, FFCalc reconciles to the cent ($137,976.34 incl GST = $137,976.34). The same fixture demonstrates that marginals-mode entry can undershoot by 2-3% on age-skewed practices because the independence assumption spreads CSC uniformly across age bands when in reality CSC is heavily concentrated in 65+ patients (where the CSC top-up is largest).
 
 ## Notes
 
-- Users currently running 0.5.0 will see "v0.4.2" until they update to this release — the displayed string is baked into the 0.5.0 bundle and can't be fixed retroactively.
+- The engine itself is unchanged — the contingent-lock change affects only how the practice's offered amount is computed and displayed in the Workbench, Comparison, and Network views. Gross PHO revenue figures are identical to v0.6.0.

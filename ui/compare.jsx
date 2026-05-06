@@ -42,7 +42,8 @@ function ScenarioCompare({ state, setState, onOpenWorkbench, pushToast, flsTopSl
     if (!p) return null;
     const r = window.ffCompute(p);
     // Honour the FL lock — if top-slice is off, FL retention is 0 regardless of what the scenario stored.
-    const eff = { ...sc.retention, firstLevel: flsTopSlice ? sc.retention.firstLevel : 0 };
+    // Contingent is fixed at 100% pass-through (thePHO policy) — overrides any saved value.
+    const eff = { ...sc.retention, firstLevel: flsTopSlice ? sc.retention.firstLevel : 0, contingent: 0 };
     const offers = {}; const retained = {};
     STREAM_KEYS.forEach(k => {
       const ret = eff[k] || 0;          // default to 0% retention for streams not in saved scenario (e.g. u14)
@@ -220,7 +221,7 @@ function ScenarioCompare({ state, setState, onOpenWorkbench, pushToast, flsTopSl
 // Default retention used if user hasn't picked a scenario:
 //   90% pass-through on flexible streams; First-Level always 100% pass unless
 //   top-slice is enabled (Tweaks → Advanced).
-const DEFAULT_RETENTION = { firstLevel: 0, u14: 0, u6: 0, contingent: 15, hop: 10, sia: 10, careplus: 10 };
+const DEFAULT_RETENTION = { firstLevel: 0, u14: 0, u6: 0, contingent: 0, hop: 10, sia: 10, careplus: 10 };
 
 function VsCurrentCompare({ state, setState, onOpenWorkbench, pushToast, flsTopSlice }) {
   const [practiceId, setPracticeId] = React.useState(() => {
@@ -251,8 +252,8 @@ function VsCurrentCompare({ state, setState, onOpenWorkbench, pushToast, flsTopS
   }
 
   const rawRetention = (practiceScenarios.find(s => s.id === scenarioId)?.retention) || DEFAULT_RETENTION;
-  // Honour the FL lock when top-slice is off.
-  const retention = { ...rawRetention, firstLevel: flsTopSlice ? rawRetention.firstLevel : 0 };
+  // Honour the FL lock when top-slice is off; force contingent to 0 (thePHO policy: 100% pass-through).
+  const retention = { ...rawRetention, firstLevel: flsTopSlice ? rawRetention.firstLevel : 0, contingent: 0 };
   const result = window.ffCompute(practice);
   const offers = {}; const retained = {};
   STREAM_KEYS.forEach(k => {

@@ -3,7 +3,7 @@
 const { Button, ICONS, STREAM_KEYS, STREAM_LABELS, STREAM_COLORS, Money, StackedBar, VarianceChip } = window;
 
 function Network({ state, onBack, onOpenWorkbench, pushToast, flsTopSlice }) {
-  const DEFAULT_NETWORK_RET = { firstLevel: 0, u14: 0, u6: 0, contingent: 15, hop: 10, sia: 10, careplus: 10 };
+  const DEFAULT_NETWORK_RET = { firstLevel: 0, u14: 0, u6: 0, contingent: 0, hop: 10, sia: 10, careplus: 10 };
   const [retention, setRetention] = React.useState(() => {
     try { return { ...DEFAULT_NETWORK_RET, ...(JSON.parse(localStorage.getItem('ffcalc:v1:network-ret')) || {}) }; }
     catch { return DEFAULT_NETWORK_RET; }
@@ -16,7 +16,8 @@ function Network({ state, onBack, onOpenWorkbench, pushToast, flsTopSlice }) {
   React.useEffect(() => { try { localStorage.setItem('ffcalc:v1:network-mgmt-plan', mgmtPlan ? '1' : '0'); } catch {} }, [mgmtPlan]);
 
   // First-Level top-slice locked off by default — full pass-through unless enabled in Tweaks → Advanced.
-  const effRetention = { ...retention, firstLevel: flsTopSlice ? retention.firstLevel : 0 };
+  // Contingent is fixed at 100% pass-through (thePHO policy) — overrides any value carried in saved network retention.
+  const effRetention = { ...retention, firstLevel: flsTopSlice ? retention.firstLevel : 0, contingent: 0 };
 
   const practiceRows = React.useMemo(() => state.practices.map(p => {
     const r = window.ffCompute(p);
@@ -69,11 +70,11 @@ function Network({ state, onBack, onOpenWorkbench, pushToast, flsTopSlice }) {
   }, [practiceRows, mgmtPlan]);
 
   const setRet = (stream, v) => setRetention(r => ({ ...r, [stream]: v }));
-  // U14/U6 retention is held at 0% (full pass-through) — not user-tunable; zero-fees streams are capitation top-ups like First-Level.
-  // Contingent gets the same retention as the master slider.
+  // U14, U6, and Contingent retention all held at 0% (full pass-through) — not user-tunable.
+  // These are capitation top-ups like First-Level; thePHO passes them through to practices in full.
   const setAllRet = (v) => setRetention(r => flsTopSlice
-    ? { firstLevel: v, u14: 0, u6: 0, contingent: v, hop: v, sia: v, careplus: v }
-    : { firstLevel: r.firstLevel, u14: 0, u6: 0, contingent: v, hop: v, sia: v, careplus: v });
+    ? { firstLevel: v, u14: 0, u6: 0, contingent: 0, hop: v, sia: v, careplus: v }
+    : { firstLevel: r.firstLevel, u14: 0, u6: 0, contingent: 0, hop: v, sia: v, careplus: v });
   const masterRet = flsTopSlice
     ? Math.round((retention.firstLevel + retention.hop + retention.sia + retention.careplus) / 4)
     : Math.round((retention.hop + retention.sia + retention.careplus) / 3);

@@ -288,7 +288,7 @@
       effective: '1 July 2025',
       source: 'Te Whatu Ora Capitation Rates s.13',
       sourceUrl: 'https://www.tewhatuora.govt.nz/for-health-providers/primary-care-sector/capitation-rates#13-contingent-capitation-rates',
-      notes: 'Per-patient capitation by age × gender. Te Whatu Ora pays this gross to the PHO; ProCare and other PHOs may retain a portion against performance metrics ("performance-linked contingent capitation"). Engine output is the TWO→PHO gross.',
+      notes: 'Per-patient capitation by age × gender. thePHO passes this through to practices in full (100%); other PHOs (ProCare, Pinnacle) often retain a portion as "performance-linked" margin. Locked at 100% pass-through across the app — same treatment as First-Level, U14, and U6.',
     },
     hop: {
       name: 'Health Promotion (HOP)', shortName: 'HOP',
@@ -548,23 +548,22 @@
   // First-Level is full pass-through (0% retention) by default; PHOs only top-slice if
   // they enable it explicitly under Tweaks → Advanced.
   // Default retention by stream type:
-  //   First-Level / U14 / U6 — capitation pass-through, 0% retained by default.
-  //   Contingent — performance-linked; defaults to 15% PHO retention to match observed behaviour.
+  //   First-Level / U14 / U6 / Contingent — capitation top-ups, fixed at 100% pass-through (thePHO policy).
   //   HOP / SIA / CarePlus — flexible funding; tunable per scenario.
   const SEED_TEMPLATES = [
-    { id: 't-generous',    name: 'Generous — 95% pass on flexible',  retention: { firstLevel: 0, u14: 0, u6: 0, contingent: 15, hop: 5,  sia: 5,  careplus: 5  } },
-    { id: 't-default-90',  name: 'Default — 90% pass on flexible',   retention: { firstLevel: 0, u14: 0, u6: 0, contingent: 15, hop: 10, sia: 10, careplus: 10 } },
-    { id: 't-base-85',     name: 'Conservative — 85% pass',          retention: { firstLevel: 0, u14: 0, u6: 0, contingent: 15, hop: 15, sia: 15, careplus: 15 } },
-    { id: 't-aggressive',  name: 'Aggressive retain — 75% pass',     retention: { firstLevel: 0, u14: 0, u6: 0, contingent: 25, hop: 25, sia: 25, careplus: 25 } },
+    { id: 't-generous',    name: 'Generous — 95% pass on flexible',  retention: { firstLevel: 0, u14: 0, u6: 0, contingent: 0, hop: 5,  sia: 5,  careplus: 5  } },
+    { id: 't-default-90',  name: 'Default — 90% pass on flexible',   retention: { firstLevel: 0, u14: 0, u6: 0, contingent: 0, hop: 10, sia: 10, careplus: 10 } },
+    { id: 't-base-85',     name: 'Conservative — 85% pass',          retention: { firstLevel: 0, u14: 0, u6: 0, contingent: 0, hop: 15, sia: 15, careplus: 15 } },
+    { id: 't-aggressive',  name: 'Aggressive retain — 75% pass',     retention: { firstLevel: 0, u14: 0, u6: 0, contingent: 0, hop: 25, sia: 25, careplus: 25 } },
   ];
 
   const SEED_SCENARIOS = [
     { id: 's-manukau-base',       practiceId: 'p-manukau-heights', name: 'Base offer — 90% pass-through',
-      retention: { firstLevel: 0, u14: 0, u6: 0, contingent: 15, hop: 10, sia: 10, careplus: 10 }, created: Date.now() - 1000 * 60 * 60 * 2 },
+      retention: { firstLevel: 0, u14: 0, u6: 0, contingent: 0, hop: 10, sia: 10, careplus: 10 }, created: Date.now() - 1000 * 60 * 60 * 2 },
     { id: 's-manukau-aggressive', practiceId: 'p-manukau-heights', name: 'Aggressive retain — 75% pass on flexible',
-      retention: { firstLevel: 0, u14: 0, u6: 0, contingent: 25, hop: 25, sia: 25, careplus: 25 }, created: Date.now() - 1000 * 60 * 60 },
+      retention: { firstLevel: 0, u14: 0, u6: 0, contingent: 0, hop: 25, sia: 25, careplus: 25 }, created: Date.now() - 1000 * 60 * 60 },
     { id: 's-hataitai-base',      practiceId: 'p-hataitai',        name: 'Hataitai base — 88% pass-through',
-      retention: { firstLevel: 0, u14: 0, u6: 0, contingent: 12, hop: 12, sia: 12, careplus: 12 }, created: Date.now() - 1000 * 60 * 60 * 24 },
+      retention: { firstLevel: 0, u14: 0, u6: 0, contingent: 0, hop: 12, sia: 12, careplus: 12 }, created: Date.now() - 1000 * 60 * 60 * 24 },
   ];
 
   // --- Format helpers ---

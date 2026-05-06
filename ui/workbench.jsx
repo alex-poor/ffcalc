@@ -4,7 +4,7 @@ const { Button, Modal, PromptModal, ConfirmModal, TypeChip, Money, VarianceChip,
 
 function Workbench({ practiceId, state, setState, onBack, onCompare, onEditPractice, pushToast, pushHistory, layoutVariant, density, flsTopSlice }) {
   const practice = state.practices.find(p => p.id === practiceId);
-  const [retention, setRetention] = React.useState({ firstLevel: 0, u14: 0, u6: 0, contingent: 15, hop: 10, sia: 10, careplus: 10 });
+  const [retention, setRetention] = React.useState({ firstLevel: 0, u14: 0, u6: 0, contingent: 0, hop: 10, sia: 10, careplus: 10 });
   const [expanded, setExpanded] = React.useState({});
   const [saveOpen, setSaveOpen] = React.useState(false);
   const [scenarioName, setScenarioName] = React.useState('');
@@ -28,10 +28,12 @@ function Workbench({ practiceId, state, setState, onBack, onCompare, onEditPract
   const result = React.useMemo(() => window.ffCompute(practice), [practice]);
 
   // First-Level top-slice locked off by default (full pass-through). Tweaks → Advanced enables it.
-  const effRetention = { ...retention, firstLevel: flsTopSlice ? retention.firstLevel : 0 };
+  // Contingent is fixed at 100% pass-through (thePHO policy) — overrides any value carried in
+  // saved scenarios from earlier releases.
+  const effRetention = { ...retention, firstLevel: flsTopSlice ? retention.firstLevel : 0, contingent: 0 };
 
-  // U14/U6 are capitation top-ups — full pass-through, no user-tunable retention.
-  // Contingent retention is editable via "Apply to all" for now.
+  // First-Level (when locked), U14, U6, and Contingent are all capitation top-ups —
+  // full pass-through to practice by default, no user-tunable retention.
   const streamRetained = {};
   const streamOffer = {};
   STREAM_KEYS.forEach(k => {
@@ -47,10 +49,11 @@ function Workbench({ practiceId, state, setState, onBack, onCompare, onEditPract
   const variance = baselineTotal != null ? totalOffer - baselineTotal : null;
 
   const setRet = (stream, v) => setRetention(r => ({ ...r, [stream]: v }));
-  // "Apply to all" only touches streams the user can actually edit — leave FL at 0 when locked, U14/U6 always at 0.
+  // "Apply to all" only touches streams the user can actually edit — leave FL at 0 when locked,
+  // U14/U6/Contingent always at 0 (capitation top-ups, fixed at 100% pass-through).
   const setAllRet = (v) => setRetention(r => flsTopSlice
-    ? { firstLevel: v, u14: 0, u6: 0, contingent: v, hop: v, sia: v, careplus: v }
-    : { firstLevel: r.firstLevel, u14: 0, u6: 0, contingent: v, hop: v, sia: v, careplus: v });
+    ? { firstLevel: v, u14: 0, u6: 0, contingent: 0, hop: v, sia: v, careplus: v }
+    : { firstLevel: r.firstLevel, u14: 0, u6: 0, contingent: 0, hop: v, sia: v, careplus: v });
   const resetRet = () => { setRetention({ firstLevel: 0, u14: 0, u6: 0, contingent: 0, hop: 0, sia: 0, careplus: 0 }); pushToast({ msg: 'Pass-through reset to 100%' }); };
 
   // Master slider average reflects only the editable streams.
